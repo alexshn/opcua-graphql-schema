@@ -1,0 +1,26 @@
+{
+  "name": "opcua-graphql-schema",
+  "version": "0.1.0",
+  "description": "GraphQL executable schema for OPC UA",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alexshn/opcua-graphql-schema.git"
+  },
+  "keywords": [
+    "opcua",
+    "OPCUA",
+    "opc ua",
+    "graphql",
+    "GraphQL"
+  ],
+  "author": "Alexey Shusharin",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/alexshn/opcua-graphql-schema/issues"
+  },
+  "homepage": "https://github.com/alexshn/opcua-graphql-schema#readme"
+}
