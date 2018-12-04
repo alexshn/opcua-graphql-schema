@@ -4,16 +4,29 @@ const { GraphQLScalarType, Kind } = require('graphql');
 const { resolveNodeId } = require("node-opcua-nodeid");
 const { coerceQualifyName, coerceLocalizedText } = require("node-opcua-data-model");
 
+//------------------------------------------------------------------------------
+// Type definition
+//------------------------------------------------------------------------------
+
 const typeDefs = gql`
   scalar NodeId
-  scalar LocaleId
   scalar QualifiedName
   scalar LocalizedText
 
-  # Any scalar type (testing only)
-  scalar Any
+  scalar Any # Any scalar type (testing only)
 `;
 
+module.exports.typeDefs = typeDefs;
+
+//------------------------------------------------------------------------------
+// Resolvers
+//------------------------------------------------------------------------------
+
+// NodeId is represented as a String with the syntax:
+// ns=<namespaceindex>;<type>=<value>
+// Example: "ns=1;i=123"
+// It is also possible ot use SymbolName as definded in:
+// http://www.opcfoundation.org/UA/schemas/NodeIds.csv
 const NodeIdType = new GraphQLScalarType({
   name: "NodeId",
   description: "OPC UA NodeId type",
@@ -28,20 +41,10 @@ const NodeIdType = new GraphQLScalarType({
   }
 });
 
-const LocaleIdType = new GraphQLScalarType({
-  name: 'LocaleId',
-  description: 'OPC UA LocaleId type',
-  serialize(value) {
-    return value;
-  },
-  parseValue(value) {
-    return value;
-  },
-  parseLiteral(ast) {
-    return (ast.kind === Kind.STRING) ? ast.value : null;
-  }
-});
-
+// QualifiedName is represented as a String with the syntax:
+// <namespaceindex>:<name>
+// Namespace 0 can be omitted
+// Example: "FolderType", "1:Temperature"
 const QualifiedNameType = new GraphQLScalarType({
   name: 'QualifiedName',
   description: 'OPC UA QualifiedName type',
@@ -113,12 +116,10 @@ const AnyType = new GraphQLScalarType({
 
 const resolvers = {
   NodeId: NodeIdType,
-  LocaleId: LocaleIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
 
   Any: AnyType,
 };
 
-module.exports.typeDefs = typeDefs;
 module.exports.resolvers = resolvers;

@@ -2,6 +2,10 @@
 const gql = require("graphql-tag");
 const { NodeClass } = require("node-opcua-data-model");
 
+//------------------------------------------------------------------------------
+// Type definition
+//------------------------------------------------------------------------------
+
 const typeDefs = gql`
   type Query {
     node(nodeId: NodeId!): Base
@@ -32,6 +36,12 @@ const typeDefs = gql`
   }
 `;
 
+module.exports.typeDefs = typeDefs;
+
+//------------------------------------------------------------------------------
+// Resolvers
+//------------------------------------------------------------------------------
+
 function queryNode(parent, args, context) {
   const { session } = context.opcua;
   return session.readAllAttributes(args.nodeId);
@@ -57,6 +67,4 @@ const resolvers = {
   },
 };
 
-
-module.exports.typeDefs = typeDefs;
 module.exports.resolvers = resolvers;
