@@ -13,7 +13,7 @@ const typeDefs = gql`
   }
 
   """
-  Base NodeClass from which all other NodeClasses are derived.
+  Base NodeClass from which all other NodeClasses are derived
   """
   interface Base {
     nodeId: NodeId!
@@ -21,19 +21,27 @@ const typeDefs = gql`
     browseName: QualifiedName!
     displayName: LocalizedText!
     description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
   }
 
   """
   Object NodeClass is used to represent systems, system components,
-  real-world objects and software objects.
+  real-world objects and software objects
   """
   type Object implements Base {
+    # Base NodeClass attributes
     nodeId: NodeId!
     nodeClass: NodeClass!
     browseName: QualifiedName!
     displayName: LocalizedText!
     description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # Object attributes
   }
+
 `;
 
 module.exports.typeDefs = typeDefs;

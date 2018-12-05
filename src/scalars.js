@@ -12,8 +12,12 @@ const typeDefs = gql`
   scalar NodeId
   scalar QualifiedName
   scalar LocalizedText
-
-  scalar Any # Any scalar type (testing only)
+  scalar SByte
+  scalar Int16
+  scalar Int32
+  scalar Byte
+  scalar UInt16
+  scalar UInt32
 `;
 
 module.exports.typeDefs = typeDefs;
@@ -22,75 +26,24 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
-// NodeId is represented as a String with the syntax:
-// ns=<namespaceindex>;<type>=<value>
-// Example: "ns=1;i=123"
-// It is also possible ot use SymbolName as definded in:
-// http://www.opcfoundation.org/UA/schemas/NodeIds.csv
-const NodeIdType = new GraphQLScalarType({
-  name: "NodeId",
-  description: "OPC UA NodeId type",
-  serialize(value) {
-    return value.toString();
-  },
-  parseValue(value) {
-    return resolveNodeId(value);
-  },
-  parseLiteral(ast) {
-    return (ast.kind === Kind.STRING) ? resolveNodeId(ast.value) : null;
-  }
-});
-
-// QualifiedName is represented as a String with the syntax:
-// <namespaceindex>:<name>
-// Namespace 0 can be omitted
-// Example: "FolderType", "1:Temperature"
-const QualifiedNameType = new GraphQLScalarType({
-  name: 'QualifiedName',
-  description: 'OPC UA QualifiedName type',
-  serialize(value) {
-    return value.toString();
-  },
-  parseValue(value) {
-    return coerceQualifyName(value);
-  },
-  parseLiteral(ast) {
-    return (ast.kind === Kind.STRING) ? coerceQualifyName(ast.value) : null;
-  }
-});
-
-const LocalizedTextType = new GraphQLScalarType({
-  name: 'LocalizedText',
-  description: 'OPC UA LocalizedText type',
-  serialize(value) {
-    return value.text;
-  },
-  parseValue(value) {
-    return opcua.coerceLocalizedText(value);
-  },
-  parseLiteral(ast) {
-    return (ast.kind === Kind.STRING) ? ast.value : null;
-  }
-});
-
-function parseAnyLiteral(ast, variables) {
+function parseLiteral(ast, variables) {
   switch (ast.kind) {
     case Kind.STRING:
     case Kind.BOOLEAN:
       return ast.value;
     case Kind.INT:
+      return parseInt(ast.value, 10);
     case Kind.FLOAT:
       return parseFloat(ast.value);
     case Kind.OBJECT: {
       const value = Object.create(null);
       ast.fields.forEach(field => {
-        value[field.name.value] = parseAnyLiteral(field.value, variables);
+        value[field.name.value] = parseLiteral(field.value, variables);
       });
-
       return value;
     }
     case Kind.LIST:
-      return ast.values.map(n => parseAnyLiteral(n, variables));
+      return ast.values.map(n => parseLiteral(n, variables));
     case Kind.NULL:
       return null;
     case Kind.VARIABLE: {
@@ -102,24 +55,70 @@ function parseAnyLiteral(ast, variables) {
   }
 }
 
-const AnyType = new GraphQLScalarType({
-  name: 'Any',
-  description: 'OPC UA Any type (testing only)',
-  serialize(value) {
-    return value;
-  },
-  parseValue(value) {
-    return value;
-  },
-  parseLiteral: parseAnyLiteral
+// NodeId is represented as a String with the syntax:
+// ns=<namespaceindex>;<type>=<value>
+// Example: "ns=1;i=123"
+// It is also possible to use SymbolName for input values as definded in:
+// http://www.opcfoundation.org/UA/schemas/NodeIds.csv
+const NodeIdType = new GraphQLScalarType({
+  name: "NodeId",
+  description: "OPC UA NodeId type (serialized to String)",
+  serialize: value => value.toString(),
+  parseValue: resolveNodeId,
+  parseLiteral: (ast, vars) => resolveNodeId(parseLiteral(ast, vars))
 });
+
+// QualifiedName is represented as a String with the syntax:
+// <namespaceindex>:<name>
+// Namespace 0 can be omitted
+// Example: "FolderType", "1:Temperature"
+const QualifiedNameType = new GraphQLScalarType({
+  name: "QualifiedName",
+  description: "OPC UA QualifiedName type (serialized to String)",
+  serialize: value => value.toString(),
+  parseValue: coerceQualifyName,
+  parseLiteral: (ast, vars) => coerceQualifyName(parseLiteral(ast, vars))
+});
+
+// LocalizedText is represented as an Object with locale and text properties.
+// Also the String can be provided as an input (null locale will be used).
+const LocalizedTextType = new GraphQLScalarType({
+  name: "LocalizedText",
+  description: "OPC UA LocalizedText type",
+  serialize: value => value,
+  parseValue: coerceLocalizedText,
+  parseLiteral: (ast, vars) => coerceLocalizedText(parseLiteral(ast, vars))
+});
+
+// Integer types
+function defineIntType(name, min, max) {
+  function parseInteger(value) {
+    if (!Number.isInteger(value) || value < min || value > max) {
+      throw new Error(`${name} must be an integer between ${min} and ${max}`);
+    }
+    return value;
+  }
+
+  return new GraphQLScalarType({
+    name,
+    description: `${min ? "Signed" : "Unsigned"} integer between ${min} and ${max}`,
+    serialize: value => value,
+    parseValue: parseInteger,
+    parseLiteral: ast => parseInteger(parseLiteral(ast))
+  });
+}
+
 
 const resolvers = {
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
-
-  Any: AnyType,
+  SByte: defineIntType("SByte", -128, 127),
+  Int16: defineIntType("Int16", -32768, 32767),
+  Int32: defineIntType("Int32", -2147483648, 2147483647),
+  Byte: defineIntType("Byte", 0, 255),
+  UInt16: defineIntType("UInt16", 0, 65535),
+  UInt32: defineIntType("UInt32", 0, 4294967295),
 };
 
 module.exports.resolvers = resolvers;
