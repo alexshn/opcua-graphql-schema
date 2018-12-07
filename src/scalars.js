@@ -96,12 +96,20 @@ const QualifiedNameType = new GraphQLScalarType({
 
 // LocalizedText is represented as an Object with locale and text properties.
 // Also the String can be provided as an input (null locale will be used).
+function parseLocalizedText(value) {
+  if (typeof value !== "string" && !(value instanceof Object &&
+    value.hasOwnProperty("locale") && value.hasOwnProperty("text"))) {
+    throw new Error("LocalizedText must be a string or Object with locale and text properties");
+  }
+  return coerceLocalizedText(value);
+}
+
 const LocalizedTextType = new GraphQLScalarType({
   name: "LocalizedText",
   description: "OPC UA LocalizedText type",
   serialize: value => value,
-  parseValue: coerceLocalizedText,
-  parseLiteral: (ast, vars) => coerceLocalizedText(parseLiteral(ast, vars))
+  parseValue: parseLocalizedText,
+  parseLiteral: (ast, vars) => parseLocalizedText(parseLiteral(ast, vars))
 });
 
 // Integer types
