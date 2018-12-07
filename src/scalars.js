@@ -79,12 +79,19 @@ const NodeIdType = new GraphQLScalarType({
 // <namespaceindex>:<name>
 // Namespace 0 can be omitted
 // Example: "FolderType", "1:Temperature"
+function parseQualifiedName(value) {
+  if (typeof value !== "string") {
+    throw new Error("QualifiedName must be a string");
+  }
+  return coerceQualifyName(value);
+}
+
 const QualifiedNameType = new GraphQLScalarType({
   name: "QualifiedName",
   description: "OPC UA QualifiedName type (serialized to String)",
   serialize: value => value.toString(),
-  parseValue: coerceQualifyName,
-  parseLiteral: (ast, vars) => coerceQualifyName(parseLiteral(ast, vars))
+  parseValue: parseQualifiedName,
+  parseLiteral: (ast, vars) => parseQualifiedName(parseLiteral(ast, vars))
 });
 
 // LocalizedText is represented as an Object with locale and text properties.

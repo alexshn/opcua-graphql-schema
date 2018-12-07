@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const { parseValue } = require("graphql");
 const { NodeId, NodeIdType } = require("node-opcua-nodeid");
+const { QualifiedName } = require("node-opcua-data-model");
 const { typeDefs, resolvers } = require("../src/scalars.js");
 
 
@@ -76,5 +77,71 @@ describe("Scalars", function() {
       expect(() => resolvers.NodeId.parseLiteral(parseValue('"ns=0"'))).to.throw();
     });
   });
-  
+
+
+  describe("QualifiedName", function() {
+    // serialize
+    it("should serialize QualifiedName to string", function() {
+      const value = resolvers.QualifiedName.serialize(new QualifiedName({
+        namespaceIndex: 1, name: "TestName"
+      }));
+      expect(value).to.be.a('string');
+      expect(value).to.equal("1:TestName");
+    });
+
+    it("should serialize QualifiedName to string (no namespace)", function() {
+      const value = resolvers.QualifiedName.serialize(new QualifiedName({
+        namespaceIndex: 0, name: "TestName"
+      }));
+      expect(value).to.be.a('string');
+      expect(value).to.equal("TestName");
+    });
+
+    // Parse value
+    it("should parse value with QualifiedName as a string", function() {
+      const value = resolvers.QualifiedName.parseValue("1:SomeName");
+      expect(value).to.be.an.instanceof(QualifiedName);
+      expect(value.namespaceIndex).to.equal(1);
+      expect(value.name).to.equal("SomeName");
+    });
+
+    it("should parse value with QualifiedName as string (no namespace)", function() {
+      const value = resolvers.QualifiedName.parseValue("NoNamespace");
+      expect(value).to.be.an.instanceof(QualifiedName);
+      expect(value.namespaceIndex).to.equal(0);
+      expect(value.name).to.equal("NoNamespace");
+    });
+
+    it("should throw if not a string passed to parseValue", function() {
+      const emsg = "QualifiedName must be a string";
+      expect(() => resolvers.QualifiedName.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseValue(10)).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseValue(10.0)).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseValue(true)).to.throw(emsg);
+    });
+
+    // Parse literal
+    it("should parse literal with QualifiedName as string", function() {
+      const value = resolvers.QualifiedName.parseLiteral(parseValue('"1:SomeName"'));
+      expect(value).to.be.an.instanceof(QualifiedName);
+      expect(value.namespaceIndex).to.equal(1);
+      expect(value.name).to.equal("SomeName");
+    });
+
+    it("should parse literal with QualifiedName as string (no namespace)", function() {
+      const value = resolvers.QualifiedName.parseLiteral(parseValue('"NoNamespace"'));
+      expect(value).to.be.an.instanceof(QualifiedName);
+      expect(value.namespaceIndex).to.equal(0);
+      expect(value.name).to.equal("NoNamespace");
+    });
+
+    it("should throw if not a string passed to parseLiteral", function() {
+      const emsg = "QualifiedName must be a string";
+      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("{}"))).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("10"))).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("10.0"))).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("true"))).to.throw(emsg);
+    });
+  });
+
 });
