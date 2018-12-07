@@ -36,7 +36,7 @@ function parseLiteral(ast, variables) {
     case Kind.FLOAT:
       return parseFloat(ast.value);
     case Kind.OBJECT: {
-      const value = Object.create(null);
+      const value = {};
       ast.fields.forEach(field => {
         value[field.name.value] = parseLiteral(field.value, variables);
       });
@@ -60,12 +60,19 @@ function parseLiteral(ast, variables) {
 // Example: "ns=1;i=123"
 // It is also possible to use SymbolName for input values as definded in:
 // http://www.opcfoundation.org/UA/schemas/NodeIds.csv
+function parseNodeId(value) {
+  if (typeof value !== "string") {
+    throw new Error("NodeId must be a string");
+  }
+  return resolveNodeId(value);
+}
+
 const NodeIdType = new GraphQLScalarType({
   name: "NodeId",
   description: "OPC UA NodeId type (serialized to String)",
   serialize: value => value.toString(),
-  parseValue: resolveNodeId,
-  parseLiteral: (ast, vars) => resolveNodeId(parseLiteral(ast, vars))
+  parseValue: parseNodeId,
+  parseLiteral: (ast, vars) => parseNodeId(parseLiteral(ast, vars))
 });
 
 // QualifiedName is represented as a String with the syntax:
