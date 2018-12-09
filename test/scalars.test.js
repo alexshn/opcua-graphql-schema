@@ -7,6 +7,29 @@ const { typeDefs, resolvers } = require("../src/scalars.js");
 
 describe("Scalars", function() {
 
+  describe("TypeDefs", function() {
+    it("should have only expected definitions", function() {
+      typeDefs.definitions.map(def => {
+        expect(def.kind).to.be.oneOf(["ScalarTypeDefinition"]);
+      });
+    });
+
+    it("should define only known scalars", function() {
+      const scalars = typeDefs.definitions.map(def => def.name.value);
+      expect(scalars).to.have.members([
+        "NodeId",
+        "QualifiedName",
+        "LocalizedText",
+        "SByte",
+        "Int16",
+        "Int32",
+        "Byte",
+        "UInt16",
+        "UInt32"
+      ]);
+    });
+  });
+
   describe("NodeId", function() {
     // Serialize
     it("should serialize NodeId to string", function() {
