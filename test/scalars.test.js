@@ -209,4 +209,113 @@ describe("Scalars", function() {
     });
   });
 
+
+  describe("SByte", function() {
+    it("should serialize and parse SByte", function() {
+      expect(resolvers.SByte.serialize(-20)).to.equal(-20);
+      expect(resolvers.SByte.parseValue(-128)).to.equal(-128);
+      expect(resolvers.SByte.parseLiteral(parseValue('127'))).to.equal(127);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "SByte must be an integer between -128 and 127";
+      expect(() => resolvers.SByte.parseValue(1000)).to.throw(emsg);
+      expect(() => resolvers.SByte.parseValue(100.4)).to.throw(emsg);
+      expect(() => resolvers.SByte.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.SByte.parseLiteral(parseValue('-1000'))).to.throw(emsg);
+      expect(() => resolvers.SByte.parseLiteral(parseValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.SByte.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Int16", function() {
+    it("should serialize and parse Int16", function() {
+      expect(resolvers.Int16.serialize(-2000)).to.equal(-2000);
+      expect(resolvers.Int16.parseValue(-32768)).to.equal(-32768);
+      expect(resolvers.Int16.parseLiteral(parseValue('32767'))).to.equal(32767);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "Int16 must be an integer between -32768 and 32767";
+      expect(() => resolvers.Int16.parseValue(32769)).to.throw(emsg);
+      expect(() => resolvers.Int16.parseValue(100.4)).to.throw(emsg);
+      expect(() => resolvers.Int16.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.Int16.parseLiteral(parseValue('-32769'))).to.throw(emsg);
+      expect(() => resolvers.Int16.parseLiteral(parseValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.Int16.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Int32", function() {
+    it("should serialize and parse Int32", function() {
+      expect(resolvers.Int32.serialize(-2000000)).to.equal(-2000000);
+      expect(resolvers.Int32.parseValue(-2147483648)).to.equal(-2147483648);
+      expect(resolvers.Int32.parseLiteral(parseValue('2147483647'))).to.equal(2147483647);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "Int32 must be an integer between -2147483648 and 2147483647";
+      expect(() => resolvers.Int32.parseValue(2147483649)).to.throw(emsg);
+      expect(() => resolvers.Int32.parseValue(100.4)).to.throw(emsg);
+      expect(() => resolvers.Int32.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.Int32.parseLiteral(parseValue('-2147483649'))).to.throw(emsg);
+      expect(() => resolvers.Int32.parseLiteral(parseValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.Int32.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Byte", function() {
+    it("should serialize and parse Byte", function() {
+      expect(resolvers.Byte.serialize(20)).to.equal(20);
+      expect(resolvers.Byte.parseValue(0)).to.equal(0);
+      expect(resolvers.Byte.parseLiteral(parseValue('255'))).to.equal(255);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "Byte must be an integer between 0 and 255";
+      expect(() => resolvers.Byte.parseValue(1000)).to.throw(emsg);
+      expect(() => resolvers.Byte.parseValue("text")).to.throw(emsg);
+      expect(() => resolvers.Byte.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.Byte.parseLiteral(parseValue('-1000'))).to.throw(emsg);
+      expect(() => resolvers.Byte.parseLiteral(parseValue('10.6'))).to.throw(emsg);
+      expect(() => resolvers.Byte.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("UInt16", function() {
+    it("should serialize and parse UInt16", function() {
+      expect(resolvers.UInt16.serialize(2000)).to.equal(2000);
+      expect(resolvers.UInt16.parseValue(0)).to.equal(0);
+      expect(resolvers.UInt16.parseLiteral(parseValue('65535'))).to.equal(65535);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "UInt16 must be an integer between 0 and 65535";
+      expect(() => resolvers.UInt16.parseValue(65536)).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseValue(100.4)).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseLiteral(parseValue('-1'))).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseLiteral(parseValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("UInt32", function() {
+    it("should serialize and parse UInt32", function() {
+      expect(resolvers.UInt32.serialize(2000000)).to.equal(2000000);
+      expect(resolvers.UInt32.parseValue(0)).to.equal(0);
+      expect(resolvers.UInt32.parseLiteral(parseValue('4294967295'))).to.equal(4294967295);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "UInt32 must be an integer between 0 and 4294967295";
+      expect(() => resolvers.UInt32.parseValue(4294967296)).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseValue(100.4)).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseValue({})).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseLiteral(parseValue('-1'))).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseLiteral(parseValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
 });
