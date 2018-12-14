@@ -28,7 +28,8 @@
   "homepage": "https://github.com/alexshn/opcua-graphql-schema#readme",
   "dependencies": {
     "graphql-tag": "^2.9.2",
-    "graphql-tools": "^4.0.0"
+    "graphql-tools": "^4.0.0",
+    "graphql-list-fields": "^2.0.2"
   },
   "devDependencies": {
     "mocha": "5.2.0",

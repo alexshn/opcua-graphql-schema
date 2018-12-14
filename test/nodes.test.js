@@ -8,7 +8,10 @@ describe("Nodes", function() {
   describe("TypeDefs", function() {
     it("should have only expected definitions", function() {
       typeDefs.definitions.map(def => {
-        expect(def.kind).to.be.oneOf(["ObjectTypeDefinition", "InterfaceTypeDefinition"]);
+        expect(def.kind).to.be.oneOf([
+          "ObjectTypeDefinition",
+          "InterfaceTypeDefinition"
+        ]);
       });
     });
 
@@ -38,40 +41,23 @@ describe("Nodes", function() {
 
 
   describe("Query", function() {
-    it("should return node through readAllAttributes", function() {
-      const object = {nodeId: "test", browseName: "testText"};
-      const args = {nodeId: "test"};
-      const context = {opcua: {session: {
-        readAllAttributes: id => {
-          expect(id).to.equal(args.nodeId);
-          return object;
-        }
-      }}};
-
-      expect(resolvers.Query.node(null, args, context)).to.deep.equal(object);
-    });
-
-    it("should return nodes through readAllAttributes", function() {
-      const object = {nodeId: "test", browseName: "testText"};
-      const args = {nodeIds: ["test", "test2"]};
-      const context = {opcua: {session: {
-        readAllAttributes: ids => {
-          expect(ids).to.deep.equal(args.nodeIds);
-          return [object];
-        }
-      }}};
-
-      expect(resolvers.Query.nodes(null, args, context)).to.deep.equal([object]);
+    it("should have query resolvers", function() {
+      expect(resolvers.Query.node).to.be.a('function');
+      expect(resolvers.Query.nodes).to.be.a('function');
     });
   });
 
-
   describe("Base", function() {
     it("should resolve Node type", function() {
-      NodeClass.enums.forEach(item => {
+      NodeClass.enums.filter(item => item.value > 0).forEach(item => {
         const object = {nodeClass: item.value};
         expect(resolvers.Base.__resolveType(object)).to.equal(item.key);
       });
+
+      // All unexpected resolved to Base
+      expect(resolvers.Base.__resolveType({})).to.equal("Base");
+      expect(resolvers.Base.__resolveType({nodeClass: null})).to.equal("Base");
+      expect(resolvers.Base.__resolveType({nodeClass: NodeClass.get("Unspecified")})).to.equal("Base");
     });
   });
 
