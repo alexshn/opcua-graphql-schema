@@ -1,5 +1,5 @@
 const { expect } = require("chai");
-const { parseValue } = require("graphql");
+const parseGQLValue = require("graphql").parseValue;
 const { NodeId, NodeIdType } = require("node-opcua-nodeid");
 const { QualifiedName, LocalizedText } = require("node-opcua-data-model");
 const { typeDefs, resolvers } = require("../src/scalars.js");
@@ -59,8 +59,6 @@ describe("Scalars", function() {
       const emsg = "NodeId must be a string";
       expect(() => resolvers.NodeId.parseValue({})).to.throw(emsg);
       expect(() => resolvers.NodeId.parseValue(10)).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseValue(10.0)).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseValue(true)).to.throw(emsg);
     });
 
     it("should throw if not a valid string passed to parseValue", function() {
@@ -71,7 +69,7 @@ describe("Scalars", function() {
 
     // Parse literal
     it("should parse literal with NodeId as string", function() {
-      const value = resolvers.NodeId.parseLiteral(parseValue('"ns=1;s=TestNodeId"'));
+      const value = resolvers.NodeId.parseLiteral(parseGQLValue('"ns=1;s=TestNodeId"'));
       expect(value).to.be.an.instanceof(NodeId);
       expect(value.identifierType).to.equal(NodeIdType.STRING);
       expect(value.namespace).to.equal(1);
@@ -79,7 +77,7 @@ describe("Scalars", function() {
     });
 
     it("should parse literal with NodeId as symbolic name", function() {
-      const value = resolvers.NodeId.parseLiteral(parseValue('"ObjectsFolder"'));
+      const value = resolvers.NodeId.parseLiteral(parseGQLValue('"ObjectsFolder"'));
       expect(value).to.be.an.instanceof(NodeId);
       expect(value.identifierType).to.equal(NodeIdType.NUMERIC);
       expect(value.namespace).to.equal(0);
@@ -88,16 +86,14 @@ describe("Scalars", function() {
 
     it("should throw if not a string passed to parseLiteral", function() {
       const emsg = "NodeId must be a string";
-      expect(() => resolvers.NodeId.parseLiteral(parseValue("{}"))).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseLiteral(parseValue("10"))).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseLiteral(parseValue("10.0"))).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseLiteral(parseValue("true"))).to.throw(emsg);
+      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("{}"))).to.throw(emsg);
+      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("10"))).to.throw(emsg);
     });
 
     it("should throw if not a valid string passed to parseLiteral", function() {
       // Do not check error message since it's from node-opcua
-      expect(() => resolvers.NodeId.parseLiteral(parseValue('"invalid"'))).to.throw();
-      expect(() => resolvers.NodeId.parseLiteral(parseValue('"ns=0"'))).to.throw();
+      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue('"invalid"'))).to.throw();
+      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue('"ns=0"'))).to.throw();
     });
   });
 
@@ -139,20 +135,18 @@ describe("Scalars", function() {
       const emsg = "QualifiedName must be a string";
       expect(() => resolvers.QualifiedName.parseValue({})).to.throw(emsg);
       expect(() => resolvers.QualifiedName.parseValue(10)).to.throw(emsg);
-      expect(() => resolvers.QualifiedName.parseValue(10.0)).to.throw(emsg);
-      expect(() => resolvers.QualifiedName.parseValue(true)).to.throw(emsg);
     });
 
     // Parse literal
     it("should parse literal with QualifiedName as string", function() {
-      const value = resolvers.QualifiedName.parseLiteral(parseValue('"1:SomeName"'));
+      const value = resolvers.QualifiedName.parseLiteral(parseGQLValue('"1:SomeName"'));
       expect(value).to.be.an.instanceof(QualifiedName);
       expect(value.namespaceIndex).to.equal(1);
       expect(value.name).to.equal("SomeName");
     });
 
     it("should parse literal with QualifiedName as string (no namespace)", function() {
-      const value = resolvers.QualifiedName.parseLiteral(parseValue('"NoNamespace"'));
+      const value = resolvers.QualifiedName.parseLiteral(parseGQLValue('"NoNamespace"'));
       expect(value).to.be.an.instanceof(QualifiedName);
       expect(value.namespaceIndex).to.equal(0);
       expect(value.name).to.equal("NoNamespace");
@@ -160,10 +154,8 @@ describe("Scalars", function() {
 
     it("should throw if not a string passed to parseLiteral", function() {
       const emsg = "QualifiedName must be a string";
-      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("{}"))).to.throw(emsg);
-      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("10"))).to.throw(emsg);
-      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("10.0"))).to.throw(emsg);
-      expect(() => resolvers.QualifiedName.parseLiteral(parseValue("true"))).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseLiteral(parseGQLValue("{}"))).to.throw(emsg);
+      expect(() => resolvers.QualifiedName.parseLiteral(parseGQLValue("10"))).to.throw(emsg);
     });
   });
 
@@ -202,14 +194,14 @@ describe("Scalars", function() {
 
     // parseLiteral
     it("should parse literal with LocalizedText as a string", function() {
-      const value = resolvers.LocalizedText.parseLiteral(parseValue('"Localized test text"'));
+      const value = resolvers.LocalizedText.parseLiteral(parseGQLValue('"Localized test text"'));
       expect(value).to.be.an.instanceof(LocalizedText);
       expect(value.locale).to.be.null;
       expect(value.text).to.equal("Localized test text");
     });
 
     it("should parse literal with LocalizedText as Object (with locale)", function() {
-      const value = resolvers.LocalizedText.parseLiteral(parseValue('{locale: "de-DE", text: "TestText"}'));
+      const value = resolvers.LocalizedText.parseLiteral(parseGQLValue('{locale: "de-DE", text: "TestText"}'));
       expect(value).to.be.an.instanceof(LocalizedText);
       expect(value.locale).to.equal("de-DE");
       expect(value.text).to.equal("TestText");
@@ -217,7 +209,7 @@ describe("Scalars", function() {
 
     it("should parse literal with LocalizedText as Object (with variables)", function() {
       const value = resolvers.LocalizedText.parseLiteral(
-        parseValue('{locale: $localeVar, text: $textVar}'),
+        parseGQLValue('{locale: $localeVar, text: $textVar}'),
         {localeVar: "en-US", textVar: "TestText"}
       );
       expect(value).to.be.an.instanceof(LocalizedText);
@@ -227,8 +219,8 @@ describe("Scalars", function() {
 
     it("should throw if not a valid value passed to parseLiteral", function() {
       const emsg = "LocalizedText must be a string or Object with locale and text properties";
-      expect(() => resolvers.LocalizedText.parseLiteral(parseValue('10'))).to.throw(emsg);
-      expect(() => resolvers.LocalizedText.parseLiteral(parseValue('{locale: "EN"}'))).to.throw(emsg);
+      expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('10'))).to.throw(emsg);
+      expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('{locale: "EN"}'))).to.throw(emsg);
     });
   });
 
@@ -237,17 +229,15 @@ describe("Scalars", function() {
     it("should serialize and parse SByte", function() {
       expect(resolvers.SByte.serialize(-20)).to.equal(-20);
       expect(resolvers.SByte.parseValue(-128)).to.equal(-128);
-      expect(resolvers.SByte.parseLiteral(parseValue('127'))).to.equal(127);
+      expect(resolvers.SByte.parseLiteral(parseGQLValue('127'))).to.equal(127);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "SByte must be an integer between -128 and 127";
       expect(() => resolvers.SByte.parseValue(1000)).to.throw(emsg);
       expect(() => resolvers.SByte.parseValue(100.4)).to.throw(emsg);
-      expect(() => resolvers.SByte.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.SByte.parseLiteral(parseValue('-1000'))).to.throw(emsg);
-      expect(() => resolvers.SByte.parseLiteral(parseValue('"text"'))).to.throw(emsg);
-      expect(() => resolvers.SByte.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.SByte.parseLiteral(parseGQLValue('-1000'))).to.throw(emsg);
+      expect(() => resolvers.SByte.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -255,17 +245,15 @@ describe("Scalars", function() {
     it("should serialize and parse Int16", function() {
       expect(resolvers.Int16.serialize(-2000)).to.equal(-2000);
       expect(resolvers.Int16.parseValue(-32768)).to.equal(-32768);
-      expect(resolvers.Int16.parseLiteral(parseValue('32767'))).to.equal(32767);
+      expect(resolvers.Int16.parseLiteral(parseGQLValue('32767'))).to.equal(32767);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "Int16 must be an integer between -32768 and 32767";
       expect(() => resolvers.Int16.parseValue(32769)).to.throw(emsg);
       expect(() => resolvers.Int16.parseValue(100.4)).to.throw(emsg);
-      expect(() => resolvers.Int16.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.Int16.parseLiteral(parseValue('-32769'))).to.throw(emsg);
-      expect(() => resolvers.Int16.parseLiteral(parseValue('"text"'))).to.throw(emsg);
-      expect(() => resolvers.Int16.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.Int16.parseLiteral(parseGQLValue('-32769'))).to.throw(emsg);
+      expect(() => resolvers.Int16.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -273,17 +261,15 @@ describe("Scalars", function() {
     it("should serialize and parse Int32", function() {
       expect(resolvers.Int32.serialize(-2000000)).to.equal(-2000000);
       expect(resolvers.Int32.parseValue(-2147483648)).to.equal(-2147483648);
-      expect(resolvers.Int32.parseLiteral(parseValue('2147483647'))).to.equal(2147483647);
+      expect(resolvers.Int32.parseLiteral(parseGQLValue('2147483647'))).to.equal(2147483647);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "Int32 must be an integer between -2147483648 and 2147483647";
       expect(() => resolvers.Int32.parseValue(2147483649)).to.throw(emsg);
       expect(() => resolvers.Int32.parseValue(100.4)).to.throw(emsg);
-      expect(() => resolvers.Int32.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.Int32.parseLiteral(parseValue('-2147483649'))).to.throw(emsg);
-      expect(() => resolvers.Int32.parseLiteral(parseValue('"text"'))).to.throw(emsg);
-      expect(() => resolvers.Int32.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.Int32.parseLiteral(parseGQLValue('-2147483649'))).to.throw(emsg);
+      expect(() => resolvers.Int32.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -291,17 +277,15 @@ describe("Scalars", function() {
     it("should serialize and parse Byte", function() {
       expect(resolvers.Byte.serialize(20)).to.equal(20);
       expect(resolvers.Byte.parseValue(0)).to.equal(0);
-      expect(resolvers.Byte.parseLiteral(parseValue('255'))).to.equal(255);
+      expect(resolvers.Byte.parseLiteral(parseGQLValue('255'))).to.equal(255);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "Byte must be an integer between 0 and 255";
       expect(() => resolvers.Byte.parseValue(1000)).to.throw(emsg);
       expect(() => resolvers.Byte.parseValue("text")).to.throw(emsg);
-      expect(() => resolvers.Byte.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.Byte.parseLiteral(parseValue('-1000'))).to.throw(emsg);
-      expect(() => resolvers.Byte.parseLiteral(parseValue('10.6'))).to.throw(emsg);
-      expect(() => resolvers.Byte.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.Byte.parseLiteral(parseGQLValue('-1000'))).to.throw(emsg);
+      expect(() => resolvers.Byte.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -309,17 +293,15 @@ describe("Scalars", function() {
     it("should serialize and parse UInt16", function() {
       expect(resolvers.UInt16.serialize(2000)).to.equal(2000);
       expect(resolvers.UInt16.parseValue(0)).to.equal(0);
-      expect(resolvers.UInt16.parseLiteral(parseValue('65535'))).to.equal(65535);
+      expect(resolvers.UInt16.parseLiteral(parseGQLValue('65535'))).to.equal(65535);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "UInt16 must be an integer between 0 and 65535";
       expect(() => resolvers.UInt16.parseValue(65536)).to.throw(emsg);
       expect(() => resolvers.UInt16.parseValue(100.4)).to.throw(emsg);
-      expect(() => resolvers.UInt16.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.UInt16.parseLiteral(parseValue('-1'))).to.throw(emsg);
-      expect(() => resolvers.UInt16.parseLiteral(parseValue('"text"'))).to.throw(emsg);
-      expect(() => resolvers.UInt16.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseLiteral(parseGQLValue('-1'))).to.throw(emsg);
+      expect(() => resolvers.UInt16.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -327,17 +309,15 @@ describe("Scalars", function() {
     it("should serialize and parse UInt32", function() {
       expect(resolvers.UInt32.serialize(2000000)).to.equal(2000000);
       expect(resolvers.UInt32.parseValue(0)).to.equal(0);
-      expect(resolvers.UInt32.parseLiteral(parseValue('4294967295'))).to.equal(4294967295);
+      expect(resolvers.UInt32.parseLiteral(parseGQLValue('4294967295'))).to.equal(4294967295);
     });
 
     it("should throw if invalid value passed for parsing", function() {
       const emsg = "UInt32 must be an integer between 0 and 4294967295";
       expect(() => resolvers.UInt32.parseValue(4294967296)).to.throw(emsg);
       expect(() => resolvers.UInt32.parseValue(100.4)).to.throw(emsg);
-      expect(() => resolvers.UInt32.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.UInt32.parseLiteral(parseValue('-1'))).to.throw(emsg);
-      expect(() => resolvers.UInt32.parseLiteral(parseValue('"text"'))).to.throw(emsg);
-      expect(() => resolvers.UInt32.parseLiteral(parseValue('{a: 10}'))).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseLiteral(parseGQLValue('-1'))).to.throw(emsg);
+      expect(() => resolvers.UInt32.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
