@@ -69,7 +69,7 @@ function parseNodeId(value) {
 
 const NodeIdType = new GraphQLScalarType({
   name: "NodeId",
-  description: "OPC UA NodeId type (serialized to String)",
+  description: "OPC UA NodeId type",
   serialize: value => value.toString(),
   parseValue: parseNodeId,
   parseLiteral: (ast, vars) => parseNodeId(parseLiteral(ast, vars))
@@ -88,18 +88,17 @@ function parseQualifiedName(value) {
 
 const QualifiedNameType = new GraphQLScalarType({
   name: "QualifiedName",
-  description: "OPC UA QualifiedName type (serialized to String)",
+  description: "OPC UA QualifiedName type",
   serialize: value => value.toString(),
   parseValue: parseQualifiedName,
   parseLiteral: (ast, vars) => parseQualifiedName(parseLiteral(ast, vars))
 });
 
-// LocalizedText is represented as an Object with locale and text properties.
-// Also the String can be provided as an input (null locale will be used).
+// LocalizedText is represented as a String (locale id is omitted).
+// Also the String should be provided as an input (null locale will be used).
 function parseLocalizedText(value) {
-  if (typeof value !== "string" && !(value instanceof Object &&
-    value.hasOwnProperty("locale") && value.hasOwnProperty("text"))) {
-    throw new Error("LocalizedText must be a string or Object with locale and text properties");
+  if (typeof value !== "string") {
+    throw new Error("LocalizedText must be a string");
   }
   return coerceLocalizedText(value);
 }
@@ -107,7 +106,7 @@ function parseLocalizedText(value) {
 const LocalizedTextType = new GraphQLScalarType({
   name: "LocalizedText",
   description: "OPC UA LocalizedText type",
-  serialize: value => value,
+  serialize: value => value.text,
   parseValue: parseLocalizedText,
   parseLiteral: (ast, vars) => parseLocalizedText(parseLiteral(ast, vars))
 });

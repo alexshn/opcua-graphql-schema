@@ -166,9 +166,8 @@ describe("Scalars", function() {
       const value = resolvers.LocalizedText.serialize(new LocalizedText({
         locale: "en-US", text: "Some localized text"
       }));
-      expect(value).to.be.an.instanceof(Object);
-      expect(value.locale).to.equal("en-US");
-      expect(value.text).to.equal("Some localized text");
+      expect(value).to.be.a('string');
+      expect(value).to.equal("Some localized text");
     });
 
     // parseValue
@@ -179,15 +178,8 @@ describe("Scalars", function() {
       expect(value.text).to.equal("Localized test text");
     });
 
-    it("should parse value with LocalizedText as Object (with locale)", function() {
-      const value = resolvers.LocalizedText.parseValue({locale: "de-DE", text: "TestText"});
-      expect(value).to.be.an.instanceof(LocalizedText);
-      expect(value.locale).to.equal("de-DE");
-      expect(value.text).to.equal("TestText");
-    });
-
     it("should throw if not a valid value passed to parseValue", function() {
-      const emsg = "LocalizedText must be a string or Object with locale and text properties";
+      const emsg = "LocalizedText must be a string";
       expect(() => resolvers.LocalizedText.parseValue(10)).to.throw(emsg);
       expect(() => resolvers.LocalizedText.parseValue({locale: "EN"})).to.throw(emsg);
     });
@@ -200,25 +192,8 @@ describe("Scalars", function() {
       expect(value.text).to.equal("Localized test text");
     });
 
-    it("should parse literal with LocalizedText as Object (with locale)", function() {
-      const value = resolvers.LocalizedText.parseLiteral(parseGQLValue('{locale: "de-DE", text: "TestText"}'));
-      expect(value).to.be.an.instanceof(LocalizedText);
-      expect(value.locale).to.equal("de-DE");
-      expect(value.text).to.equal("TestText");
-    });
-
-    it("should parse literal with LocalizedText as Object (with variables)", function() {
-      const value = resolvers.LocalizedText.parseLiteral(
-        parseGQLValue('{locale: $localeVar, text: $textVar}'),
-        {localeVar: "en-US", textVar: "TestText"}
-      );
-      expect(value).to.be.an.instanceof(LocalizedText);
-      expect(value.locale).to.equal("en-US");
-      expect(value.text).to.equal("TestText");
-    });
-
     it("should throw if not a valid value passed to parseLiteral", function() {
-      const emsg = "LocalizedText must be a string or Object with locale and text properties";
+      const emsg = "LocalizedText must be a string";
       expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('10'))).to.throw(emsg);
       expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('{locale: "EN"}'))).to.throw(emsg);
     });
