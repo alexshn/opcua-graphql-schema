@@ -88,18 +88,15 @@ function queryNodeAttributes(nodes, context, ast) {
     const result = [];
 
     for(const node of nodes) {
-      let added = 0;
       const data = {nodeId: node};
 
       for(const attr of attributes) {
-        const dataValue = dataValues[index++];
-        if (dataValue.statusCode.equals(StatusCodes.Good)) {
-          data[attr] = dataValue.value.value;
-          added++;
-        }
+        data[attr] = dataValues[index++];
       }
 
-      if (added > 0) {
+      // nodeClass must be provided
+      if (data.nodeClass && data.nodeClass.statusCode.equals(StatusCodes.Good)
+        && data.nodeClass.value && data.nodeClass.value.value > 0) {
         result.push(data);
       }
     }
@@ -122,8 +119,17 @@ function queryNodes(parent, args, context, ast) {
 }
 
 function resolveNodeType(parent, args, context) {
-  // TODO: throw exception if cannot resolve (instead of resolving to Base)
-  return parent.nodeClass > 0 ? NodeClass.get(parent.nodeClass).key : "Base";
+  return NodeClass.get(parent.nodeClass.value.value).key;
+}
+
+function resolveDataValueToValue(parent, args, context, ast) {
+  const data = parent[ast.fieldName];
+  return data.statusCode.equals(StatusCodes.Good) ? data.value.value : null;
+}
+
+function resolveDataValueToVariant(parent, args, context, ast) {
+  const data = parent[ast.fieldName];
+  return data.statusCode.equals(StatusCodes.Good) ? data.value : null;
 }
 
 const resolvers = {
@@ -133,7 +139,18 @@ const resolvers = {
   },
 
   Base: {
-    __resolveType: resolveNodeType,
+    __resolveType:  resolveNodeType,
+  },
+
+  Object: {
+    nodeClass:      resolveDataValueToValue,
+    browseName:     resolveDataValueToValue,
+    displayName:    resolveDataValueToValue,
+    description:    resolveDataValueToValue,
+    writeMask:      resolveDataValueToValue,
+    userWriteMask:  resolveDataValueToValue,
+
+    eventNotifier:  resolveDataValueToValue,
   },
 };
 

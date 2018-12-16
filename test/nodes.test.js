@@ -1,5 +1,8 @@
 const { expect } = require("chai");
-const { NodeClass } = require("node-opcua-data-model");
+const { NodeClass, coerceQualifyName, coerceLocalizedText } = require("node-opcua-data-model");
+const { DataValue } = require("node-opcua-data-value");
+const { StatusCodes } = require("node-opcua-status-code");
+const { Variant, DataType } = require("node-opcua-variant");
 const { typeDefs, resolvers } = require("../src/nodes.js");
 
 
@@ -47,17 +50,90 @@ describe("Nodes", function() {
     });
   });
 
-  describe("Base", function() {
-    it("should resolve Node type", function() {
-      NodeClass.enums.filter(item => item.value > 0).forEach(item => {
-        const object = {nodeClass: item.value};
-        expect(resolvers.Base.__resolveType(object)).to.equal(item.key);
+  describe("Attributes", function() {
+    it("should resolve nodeClass", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.Int32,
+          value: NodeClass.Object
+        }),
+        statusCode: StatusCodes.Good
       });
+      const ast = {fieldName: "nodeClass"};
+      const parent = {nodeClass: dataValue};
 
-      // All unexpected resolved to Base
-      expect(resolvers.Base.__resolveType({})).to.equal("Base");
-      expect(resolvers.Base.__resolveType({nodeClass: null})).to.equal("Base");
-      expect(resolvers.Base.__resolveType({nodeClass: NodeClass.get("Unspecified")})).to.equal("Base");
+      expect(resolvers.Base.__resolveType(parent)).to.equal(NodeClass.Object.key);
+      expect(resolvers.Object.nodeClass(parent, null, null, ast)).to.equal(NodeClass.Object.value);
+    });
+
+    it("should resolve browseName", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.QualifiedName,
+          value: coerceQualifyName("1:BrowseName")
+        }),
+        statusCode: StatusCodes.Good
+      });
+      const ast = {fieldName: "browseName"};
+      const parent = {browseName: dataValue};
+
+      expect(resolvers.Object.browseName(parent, null, null, ast)).to.equal(dataValue.value.value);
+    });
+
+    it("should resolve displayName", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.LocalizedText,
+          value: coerceLocalizedText("TestText")
+        }),
+        statusCode: StatusCodes.Good
+      });
+      const ast = {fieldName: "displayName"};
+      const parent = {displayName: dataValue};
+
+      expect(resolvers.Object.displayName(parent, null, null, ast)).to.equal(dataValue.value.value);
+    });
+
+    it("should resolve description", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.LocalizedText,
+          value: coerceLocalizedText("TestText")
+        }),
+        statusCode: StatusCodes.Good
+      });
+      const ast = {fieldName: "description"};
+      const parent = {description: dataValue};
+
+      expect(resolvers.Object.description(parent, null, null, ast)).to.equal(dataValue.value.value);
+    });
+
+    it("should resolve writeMask", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.UInt32,
+          value: 257
+        }),
+        statusCode: StatusCodes.Good
+      });
+      const ast = {fieldName: "writeMask"};
+      const parent = {writeMask: dataValue};
+
+      expect(resolvers.Object.writeMask(parent, null, null, ast)).to.equal(dataValue.value.value);
+    });
+
+    it("should resolve userWriteMask", function() {
+      const dataValue = new DataValue({
+        value: new Variant({
+          dataType: DataType.UInt32,
+          value: 257
+        }),
+        statusCode: StatusCodes.Good
+      });
+      const ast = {fieldName: "userWriteMask"};
+      const parent = {userWriteMask: dataValue};
+
+      expect(resolvers.Object.userWriteMask(parent, null, null, ast)).to.equal(dataValue.value.value);
     });
   });
 
