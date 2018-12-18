@@ -25,7 +25,9 @@ describe("Scalars", function() {
         "Int32",
         "Byte",
         "UInt16",
-        "UInt32"
+        "UInt32",
+        "Float",
+        "Double"
       ]);
     });
   });
@@ -293,6 +295,34 @@ describe("Scalars", function() {
       expect(() => resolvers.UInt32.parseValue(100.4)).to.throw(emsg);
       expect(() => resolvers.UInt32.parseLiteral(parseGQLValue('-1'))).to.throw(emsg);
       expect(() => resolvers.UInt32.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Float", function() {
+    it("should serialize and parse Float", function() {
+      expect(resolvers.Float.serialize(200.01)).to.equal(200.01);
+      expect(resolvers.Float.parseValue(0)).to.equal(0);
+      expect(resolvers.Float.parseLiteral(parseGQLValue('0.1234'))).to.equal(0.1234);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "Float must be a number";
+      expect(() => resolvers.Float.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.Float.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Double", function() {
+    it("should serialize and parse Double", function() {
+      expect(resolvers.Double.serialize(200.01)).to.equal(200.01);
+      expect(resolvers.Double.parseValue(0)).to.equal(0);
+      expect(resolvers.Double.parseLiteral(parseGQLValue('0.1234'))).to.equal(0.1234);
+    });
+
+    it("should throw if invalid value passed for parsing", function() {
+      const emsg = "Double must be a number";
+      expect(() => resolvers.Double.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.Double.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 

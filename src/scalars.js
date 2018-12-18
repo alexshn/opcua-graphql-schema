@@ -18,6 +18,8 @@ const typeDefs = gql`
   scalar Byte
   scalar UInt16
   scalar UInt32
+  scalar Float
+  scalar Double
 `;
 
 module.exports.typeDefs = typeDefs;
@@ -129,6 +131,38 @@ function defineIntType(name, min, max) {
   });
 }
 
+// Float
+function parseOPCFloat(value) {
+  if (typeof value !== "number") {
+    throw new Error("Float must be a number");
+  }
+  return value;
+}
+
+const FloatType = new GraphQLScalarType({
+  name: "Float",
+  description: "OPC UA Float type",
+  serialize: value => value,
+  parseValue: parseOPCFloat,
+  parseLiteral: (ast, vars) => parseOPCFloat(parseLiteral(ast, vars))
+});
+
+// Double
+function parseDouble(value) {
+  if (typeof value !== "number") {
+    throw new Error("Double must be a number");
+  }
+  return value;
+}
+
+const DoubleType = new GraphQLScalarType({
+  name: "Double",
+  description: "OPC UA Double type",
+  serialize: value => value,
+  parseValue: parseDouble,
+  parseLiteral: (ast, vars) => parseDouble(parseLiteral(ast, vars))
+});
+
 
 const resolvers = {
   NodeId: NodeIdType,
@@ -140,6 +174,8 @@ const resolvers = {
   Byte: defineIntType("Byte", 0, 255),
   UInt16: defineIntType("UInt16", 0, 65535),
   UInt32: defineIntType("UInt32", 0, 4294967295),
+  Float: FloatType,
+  Double: DoubleType,
 };
 
 module.exports.resolvers = resolvers;

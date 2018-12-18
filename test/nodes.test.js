@@ -164,6 +164,13 @@ describe("Nodes", function() {
       }),
       statusCode: StatusCodes.Good
     }),
+    minimumSamplingInterval: new DataValue({
+      value: new Variant({
+        dataType: DataType.Double,
+        value: 10.1
+      }),
+      statusCode: StatusCodes.Good
+    }),
     historizing: new DataValue({
       value: new Variant({
         dataType: DataType.Boolean,
@@ -256,6 +263,7 @@ describe("Nodes", function() {
       checkAttribute(resolvers.Variable, "arrayDimensions");
       checkAttribute(resolvers.Variable, "accessLevel");
       checkAttribute(resolvers.Variable, "userAccessLevel");
+      checkAttribute(resolvers.Variable, "minimumSamplingInterval");
       checkAttribute(resolvers.Variable, "historizing");
     });
   });

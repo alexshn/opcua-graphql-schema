@@ -102,7 +102,7 @@ const typeDefs = gql`
     arrayDimensions: [UInt32]
     accessLevel: Byte!
     userAccessLevel: Byte!
-    # TODO: minimumSamplingInterval: Double
+    minimumSamplingInterval: Double
     historizing: Boolean!
   }
 
@@ -325,7 +325,7 @@ const resolvers = {
     arrayDimensions:          resolveDataValueToValue,
     accessLevel:              resolveDataValueToValue,
     userAccessLevel:          resolveDataValueToValue,
-    // TODO: minimumSamplingInterval:  Double
+    minimumSamplingInterval:  resolveDataValueToValue,
     historizing:              resolveDataValueToValue,
   },
 
