@@ -33,7 +33,7 @@ const typeDefs = gql`
   real-world objects and software objects
   """
   type Object implements Base {
-    # Base NodeClass attributes
+    # Base attributes
     nodeId: NodeId!
     nodeClass: NodeClass!
     browseName: QualifiedName!
@@ -43,7 +43,141 @@ const typeDefs = gql`
     userWriteMask: UInt32
 
     # Object attributes
-    eventNotifier: Byte
+    eventNotifier: Byte!
+  }
+
+  """
+  ObjectType NodeClass provides definition for Objects
+  """
+  type ObjectType implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # ObjectType attributes
+    isAbstract: Boolean!
+  }
+
+  """
+  ReferenceType NodeClass provides definition for References
+  """
+  type ReferenceType implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # ReferenceType attributes
+    isAbstract: Boolean!
+    symmetric: Boolean!
+    inverseName: LocalizedText
+  }
+
+  """
+  Variable NodeClass is used to represent value which may be simple or complex
+  """
+  type Variable implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # Variable attributes
+    # TODO: value: Variant!
+    dataType: NodeId!
+    valueRank: Int32!
+    arrayDimensions: [UInt32]
+    accessLevel: Byte!
+    userAccessLevel: Byte!
+    # TODO: minimumSamplingInterval: Double
+    historizing: Boolean!
+  }
+
+  """
+  VariableType NodeClass provides definition for Variables
+  """
+  type VariableType implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # VariableType attributes
+    # TODO: value: Variant
+    dataType: NodeId!
+    valueRank: Int32!
+    arrayDimensions: [UInt32]
+    isAbstract: Boolean!
+  }
+
+  """
+  DataType NodeClass describes the syntax of a Variable Value
+  """
+  type DataType implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # DataType attributes
+    isAbstract: Boolean!
+  }
+
+  """
+  Method NodeClass define callable functions
+  """
+  type Method implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # Method attributes
+    executable: Boolean!
+    userExecutable: Boolean!
+  }
+
+  """
+  View NodeClass defines a subset of the Nodes in the AddressSpace
+  """
+  type View implements Base {
+    # Base attributes
+    nodeId: NodeId!
+    nodeClass: NodeClass!
+    browseName: QualifiedName!
+    displayName: LocalizedText!
+    description: LocalizedText
+    writeMask: UInt32
+    userWriteMask: UInt32
+
+    # View attributes
+    containsNoLoops: Boolean!
+    eventNotifier: Byte!
   }
 
 `;
@@ -134,24 +268,117 @@ function resolveDataValueToVariant(parent, args, context, ast) {
 
 const resolvers = {
   Query: {
-    node: queryNode,
-    nodes: queryNodes,
+    node:                     queryNode,
+    nodes:                    queryNodes,
   },
 
   Base: {
-    __resolveType:  resolveNodeType,
+    __resolveType:            resolveNodeType,
   },
 
   Object: {
-    nodeClass:      resolveDataValueToValue,
-    browseName:     resolveDataValueToValue,
-    displayName:    resolveDataValueToValue,
-    description:    resolveDataValueToValue,
-    writeMask:      resolveDataValueToValue,
-    userWriteMask:  resolveDataValueToValue,
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
 
-    eventNotifier:  resolveDataValueToValue,
+    eventNotifier:            resolveDataValueToValue,
   },
+
+  ObjectType: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    isAbstract:               resolveDataValueToValue,
+  },
+
+  ReferenceType: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    isAbstract:               resolveDataValueToValue,
+    symmetric:                resolveDataValueToValue,
+    inverseName:              resolveDataValueToValue,
+  },
+
+  Variable: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    // TODO: value: resolveDataValueToVariant,
+    dataType:                 resolveDataValueToValue,
+    valueRank:                resolveDataValueToValue,
+    arrayDimensions:          resolveDataValueToValue,
+    accessLevel:              resolveDataValueToValue,
+    userAccessLevel:          resolveDataValueToValue,
+    // TODO: minimumSamplingInterval:  Double
+    historizing:              resolveDataValueToValue,
+  },
+
+  VariableType: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    // TODO: value: resolveDataValueToVariant,
+    dataType:                 resolveDataValueToValue,
+    valueRank:                resolveDataValueToValue,
+    arrayDimensions:          resolveDataValueToValue,
+    isAbstract:               resolveDataValueToValue,
+  },
+
+  DataType: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    isAbstract:               resolveDataValueToValue,
+  },
+
+  Method: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    executable:               resolveDataValueToValue,
+    userExecutable:           resolveDataValueToValue,
+  },
+
+  View: {
+    nodeClass:                resolveDataValueToValue,
+    browseName:               resolveDataValueToValue,
+    displayName:              resolveDataValueToValue,
+    description:              resolveDataValueToValue,
+    writeMask:                resolveDataValueToValue,
+    userWriteMask:            resolveDataValueToValue,
+
+    containsNoLoops:          resolveDataValueToValue,
+    eventNotifier:            resolveDataValueToValue,
+  },
+
 };
 
 module.exports.resolvers = resolvers;
