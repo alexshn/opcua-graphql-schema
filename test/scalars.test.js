@@ -27,7 +27,8 @@ describe("Scalars", function() {
         "UInt16",
         "UInt32",
         "Float",
-        "Double"
+        "Double",
+        "Variant"
       ]);
     });
   });
@@ -323,6 +324,12 @@ describe("Scalars", function() {
       const emsg = "Double must be a number";
       expect(() => resolvers.Double.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
       expect(() => resolvers.Double.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("Variant", function() {
+    it("should parse Variant to JSON", function() {
+      // TODO: implement tests for Variant scalar
     });
   });
 

@@ -96,7 +96,7 @@ const typeDefs = gql`
     userWriteMask: UInt32
 
     # Variable attributes
-    # TODO: value: Variant!
+    value: Variant!
     dataType: NodeId!
     valueRank: Int32!
     arrayDimensions: [UInt32]
@@ -120,7 +120,7 @@ const typeDefs = gql`
     userWriteMask: UInt32
 
     # VariableType attributes
-    # TODO: value: Variant
+    value: Variant
     dataType: NodeId!
     valueRank: Int32!
     arrayDimensions: [UInt32]
@@ -319,7 +319,7 @@ const resolvers = {
     writeMask:                resolveDataValueToValue,
     userWriteMask:            resolveDataValueToValue,
 
-    // TODO: value: resolveDataValueToVariant,
+    value:                    resolveDataValueToVariant,
     dataType:                 resolveDataValueToValue,
     valueRank:                resolveDataValueToValue,
     arrayDimensions:          resolveDataValueToValue,
@@ -337,7 +337,7 @@ const resolvers = {
     writeMask:                resolveDataValueToValue,
     userWriteMask:            resolveDataValueToValue,
 
-    // TODO: value: resolveDataValueToVariant,
+    value:                    resolveDataValueToVariant,
     dataType:                 resolveDataValueToValue,
     valueRank:                resolveDataValueToValue,
     arrayDimensions:          resolveDataValueToValue,
