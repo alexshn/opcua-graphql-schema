@@ -1,7 +1,11 @@
 const { expect } = require("chai");
 const parseGQLValue = require("graphql").parseValue;
 const { NodeId, NodeIdType } = require("node-opcua-nodeid");
-const { QualifiedName, LocalizedText } = require("node-opcua-data-model");
+const { QualifiedName,
+        LocalizedText,
+        coerceQualifyName,
+        coerceLocalizedText } = require("node-opcua-data-model");
+const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
 const { typeDefs, resolvers } = require("../src/scalars.js");
 
 
@@ -328,8 +332,63 @@ describe("Scalars", function() {
   });
 
   describe("Variant", function() {
-    it("should parse Variant to JSON", function() {
-      // TODO: implement tests for Variant scalar
+    it("should serialize scalar Variant", function() {
+      expect(resolvers.Variant.serialize(new Variant({
+        dataType: DataType.QualifiedName,
+        value: coerceQualifyName("1:BrowseName")
+      }))).to.equal("1:BrowseName");
+
+      expect(resolvers.Variant.serialize(new Variant({
+        dataType: DataType.LocalizedText,
+        value: coerceLocalizedText("TestText")
+      }))).to.equal("TestText");
+
+      expect(resolvers.Variant.serialize(new Variant({
+        dataType: DataType.Int32,
+        value: 1000
+      }))).to.equal(1000);
+    });
+
+    it("should serialize array Variant", function() {
+      expect(resolvers.Variant.serialize(new Variant({
+        arrayType: VariantArrayType.Array,
+        dataType: DataType.QualifiedName,
+        value: [coerceQualifyName("1:BrowseName"), coerceQualifyName("0:QualifiedName")]
+      }))).to.deep.equal(["1:BrowseName", "QualifiedName"]);
+    });
+
+    it("should serialize matrix Variant", function() {
+      expect(resolvers.Variant.serialize(new Variant({
+        arrayType: VariantArrayType.Matrix,
+        dimensions: [2, 3],
+        dataType: DataType.NodeId,
+        value: [
+          new NodeId(NodeIdType.NUMERIC, 1, 2),
+          new NodeId(NodeIdType.NUMERIC, 2, 1),
+          new NodeId(NodeIdType.NUMERIC, 3, 0),
+          new NodeId(NodeIdType.STRING, "Id1", 0),
+          new NodeId(NodeIdType.STRING, "Id2", 1),
+          new NodeId(NodeIdType.STRING, "Id3", 2),
+        ]
+      }))).to.deep.equal([
+        ["ns=2;i=1", "ns=1;i=2", "ns=0;i=3"],
+        ["ns=0;s=Id1", "ns=1;s=Id2", "ns=2;s=Id3"]
+      ]);
+
+      expect(resolvers.Variant.serialize(new Variant({
+        arrayType: VariantArrayType.Matrix,
+        dimensions: [2, 3, 4],
+        dataType: DataType.Byte,
+        value: Uint8Array.from(Array(24).keys())
+      }))).to.deep.equal([
+        [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]],
+        [[12, 13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23]],
+      ]);
+    });
+
+    it("should parse value and literal to JSON", function() {
+      expect(resolvers.Variant.parseValue({a: 10, b: "text"})).to.deep.equal({a: 10, b: "text"});
+      expect(resolvers.Variant.parseLiteral(parseGQLValue('{a: 10, b: "text"}'))).to.deep.equal({a: 10, b: "text"});
     });
   });
 

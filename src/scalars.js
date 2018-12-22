@@ -223,22 +223,22 @@ function serializeVariant(variant) {
     return serializeVariantValue(variant.value, variant.dataType);
   }
 
-  const serializedArray = variant.value.map(
-    value => serializeVariantValue(value, variant.dataType));
+  // If VariantArrayType.Array or VariantArrayType.Matrix
+  let serializedArray =
+    (ArrayBuffer.isView(variant.value) ? Array.from(variant.value) : variant.value)
+    .map(value => serializeVariantValue(value, variant.dataType));
 
   if (variant.arrayType === VariantArrayType.Array) {
     return serializedArray;
   }
 
   // if VariantArrayType.Matrix
-  for(i = 1; i < variant.dimensions.length; i++) {
-    const dimHi = variant.dimensions[variant.dimensions.length - i];
-    const dimLo = variant.dimensions[variant.dimensions.length - i - 1];
+  for(let i = 1; i < variant.dimensions.length; i++) {
+    const dim = variant.dimensions[variant.dimensions.length - i];
 
     const result = [];
-    for (j = 0; j < dimLo; j++) {
-      const idx = j * dimHi;
-      result.push(serializedArray.slice(idx, idx + dimHi));
+    for (let j = 0; j < serializedArray.length; j += dim) {
+      result.push(serializedArray.slice(j, j + dim));
     }
 
     serializedArray = result;
