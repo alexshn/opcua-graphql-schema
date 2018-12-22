@@ -129,6 +129,13 @@ describe("Nodes", function() {
       }),
       statusCode: StatusCodes.Good
     }),
+    value: new DataValue({
+      value: new Variant({
+        dataType: DataType.Int32,
+        value: 5050
+      }),
+      statusCode: StatusCodes.Good
+    }),
     dataType: new DataValue({
       value: new Variant({
         dataType: DataType.NodeId,
@@ -258,6 +265,10 @@ describe("Nodes", function() {
     });
 
     it("should resolve Variable attributes", function() {
+      const value = resolvers.VariableType.value(parent, null, null, {fieldName: "value"});
+      expect(value).to.be.an.instanceof(Variant);
+      expect(value.dataType).to.equal(DataType.Int32);
+      expect(value.value).to.equal(5050);
       checkAttribute(resolvers.Variable, "dataType");
       checkAttribute(resolvers.Variable, "valueRank");
       checkAttribute(resolvers.Variable, "arrayDimensions");
@@ -274,6 +285,10 @@ describe("Nodes", function() {
     });
 
     it("should resolve VariableType attributes", function() {
+      const value = resolvers.VariableType.value(parent, null, null, {fieldName: "value"});
+      expect(value).to.be.an.instanceof(Variant);
+      expect(value.dataType).to.equal(DataType.Int32);
+      expect(value.value).to.equal(5050);
       checkAttribute(resolvers.VariableType, "dataType");
       checkAttribute(resolvers.VariableType, "valueRank");
       checkAttribute(resolvers.VariableType, "arrayDimensions");
