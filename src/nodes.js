@@ -240,15 +240,14 @@ function queryNodeAttributes(nodes, context, ast) {
 }
 
 function queryNode(parent, args, context, ast) {
+  // TODO: check that context is valid
   return queryNodeAttributes([args.nodeId], context, ast).then(result => {
-    if(result.length === 0) {
-      throw new Error(StatusCodes.BadNodeIdUnknown.description);
-    }
-    return result[0];
+    return result.length > 0 ? result[0] : null;
   });
 }
 
 function queryNodes(parent, args, context, ast) {
+  // TODO: check that context is valid
   return queryNodeAttributes(args.nodeIds, context, ast);
 }
 
