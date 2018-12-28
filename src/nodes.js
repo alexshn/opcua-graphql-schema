@@ -258,6 +258,8 @@ const typeDefs = gql`
     browseName: QualifiedName
     displayName: LocalizedText
     typeDefinition: NodeId
+
+    targetNode: Base
   }
 
 `;
@@ -375,6 +377,13 @@ function resolveReferences(parent, args, context, ast) {
     return references;
   });
 }
+
+function resolveTargetNode(parent, args, context, ast) {
+  return queryNodeAttributes([parent.nodeId], context, ast).then(result => {
+    return result.length > 0 ? result[0] : null;
+  });
+}
+
 
 const resolvers = {
   Query: {
@@ -503,6 +512,10 @@ const resolvers = {
     eventNotifier:            resolveDataValueToValue,
 
     references:               resolveReferences,
+  },
+
+  ReferenceDescription: {
+    targetNode:               resolveTargetNode,
   },
 
 };
