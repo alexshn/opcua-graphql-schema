@@ -1,6 +1,6 @@
 "use strict";
 const gql = require("graphql-tag");
-const { NodeClass } = require("node-opcua-data-model");
+const { NodeClass, BrowseDirection } = require("node-opcua-data-model");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -17,6 +17,13 @@ const typeDefs = gql`
     ReferenceType
     DataType
     View
+  }
+
+  enum BrowseDirection {
+    Invalid
+    Forward
+    Inverse
+    Both
   }
 `;
 
@@ -38,9 +45,17 @@ const NodeClassEnum = {
   View:           NodeClass.View.value,
 };
 
+const BrowseDirectionEnum = {
+  Invalid:        BrowseDirection.Invalid.value,
+  Forward:        BrowseDirection.Forward.value,
+  Inverse:        BrowseDirection.Inverse.value,
+  Both:           BrowseDirection.Both.value,
+};
+
 
 const resolvers = {
-  NodeClass: NodeClassEnum
+  NodeClass: NodeClassEnum,
+  BrowseDirection: BrowseDirectionEnum,
 };
 
 module.exports.resolvers = resolvers;

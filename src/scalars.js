@@ -62,6 +62,7 @@ function parseLiteral(ast, variables) {
 // NodeId is represented as a String with the syntax:
 // ns=<namespaceindex>;<type>=<value>
 // Example: "ns=1;i=123"
+// If this is ExpandedNodeId the string can also have namespaceUri and serverIndex
 // It is also possible to use SymbolName for input values as definded in:
 // http://www.opcfoundation.org/UA/schemas/NodeIds.csv
 function parseNodeId(value) {

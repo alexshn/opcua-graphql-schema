@@ -1,4 +1,4 @@
-
+"use strict";
 
 module.exports.lowerFirstLetter = function(name) {
   return name.charAt(0).toLowerCase() + name.slice(1);

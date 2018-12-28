@@ -1,7 +1,10 @@
 "use strict";
 const gql = require("graphql-tag");
 const getFieldNames = require("graphql-list-fields");
-const { NodeClass, AttributeIds } = require("node-opcua-data-model");
+const { NodeClass,
+        BrowseDirection,
+        ResultMask,
+        AttributeIds } = require("node-opcua-data-model");
 const { StatusCodes } = require("node-opcua-status-code");
 const utils = require("./utils");
 
@@ -26,6 +29,13 @@ const typeDefs = gql`
     description: LocalizedText
     writeMask: UInt32
     userWriteMask: UInt32
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -44,6 +54,13 @@ const typeDefs = gql`
 
     # Object attributes
     eventNotifier: Byte!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -61,6 +78,13 @@ const typeDefs = gql`
 
     # ObjectType attributes
     isAbstract: Boolean!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -80,6 +104,13 @@ const typeDefs = gql`
     isAbstract: Boolean!
     symmetric: Boolean!
     inverseName: LocalizedText
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -104,6 +135,13 @@ const typeDefs = gql`
     userAccessLevel: Byte!
     minimumSamplingInterval: Double
     historizing: Boolean!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -125,6 +163,13 @@ const typeDefs = gql`
     valueRank: Int32!
     arrayDimensions: [UInt32]
     isAbstract: Boolean!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -142,6 +187,13 @@ const typeDefs = gql`
 
     # DataType attributes
     isAbstract: Boolean!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -160,6 +212,13 @@ const typeDefs = gql`
     # Method attributes
     executable: Boolean!
     userExecutable: Boolean!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
   }
 
   """
@@ -178,6 +237,27 @@ const typeDefs = gql`
     # View attributes
     containsNoLoops: Boolean!
     eventNotifier: Byte!
+
+    # References
+    references(
+      referenceTypeId: NodeId,
+      includeSubtypes: Boolean,
+      browseDirection: BrowseDirection,
+      targetNodeClass: [NodeClass]): [ReferenceDescription]
+  }
+
+  """
+  Reference parameters returned for the reference
+  """
+  type ReferenceDescription {
+    referenceTypeId: NodeId
+    isForward: Boolean
+
+    nodeId: NodeId!
+    nodeClass: NodeClass
+    browseName: QualifiedName
+    displayName: LocalizedText
+    typeDefinition: NodeId
   }
 
 `;
@@ -265,6 +345,37 @@ function resolveDataValueToVariant(parent, args, context, ast) {
   return data.statusCode.equals(StatusCodes.Good) ? data.value : null;
 }
 
+function resolveReferences(parent, args, context, ast) {
+  const { session } = context.opcua;
+
+  const nodesToBrowse = {
+    nodeId: parent.nodeId,
+    referenceTypeId: args.referenceTypeId,
+    includeSubtypes: args.includeSubtypes != null ? args.includeSubtypes : true,
+    browseDirection: args.browseDirection != null ? BrowseDirection[args.browseDirection] : BrowseDirection.Both,
+    nodeClassMask: args.targetNodeClass != null ? args.targetNodeClass.reduce((m, c) => m | c, 0) : 0,
+    resultMask: getFieldNames(ast).map(utils.upperFirstLetter).reduce((m, f) =>
+      m | ResultMask[f === "ReferenceTypeId" ? "ReferenceType" : f], 0),
+  }
+
+  return session.browse(nodesToBrowse).then(result => {
+    const {statusCode, references} = result;
+
+    if (!statusCode.equals(StatusCodes.Good)) {
+      throw new Error(`Node reference query failed with error: ${statusCode.name}`);
+    }
+
+    if (nodesToBrowse.resultMask & ResultMask.NodeClass) {
+      // Convert enum objects to int values
+      // It doesn't follow immutable pattern but in this particular case
+      // it's allowed to mutate object and avoid unnecessary copy
+      references.forEach(ref => ref.nodeClass = ref.nodeClass.value);
+    }
+
+    return references;
+  });
+}
+
 const resolvers = {
   Query: {
     node:                     queryNode,
@@ -284,6 +395,8 @@ const resolvers = {
     userWriteMask:            resolveDataValueToValue,
 
     eventNotifier:            resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   ObjectType: {
@@ -295,6 +408,8 @@ const resolvers = {
     userWriteMask:            resolveDataValueToValue,
 
     isAbstract:               resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   ReferenceType: {
@@ -308,6 +423,8 @@ const resolvers = {
     isAbstract:               resolveDataValueToValue,
     symmetric:                resolveDataValueToValue,
     inverseName:              resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   Variable: {
@@ -326,6 +443,8 @@ const resolvers = {
     userAccessLevel:          resolveDataValueToValue,
     minimumSamplingInterval:  resolveDataValueToValue,
     historizing:              resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   VariableType: {
@@ -341,6 +460,8 @@ const resolvers = {
     valueRank:                resolveDataValueToValue,
     arrayDimensions:          resolveDataValueToValue,
     isAbstract:               resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   DataType: {
@@ -352,6 +473,8 @@ const resolvers = {
     userWriteMask:            resolveDataValueToValue,
 
     isAbstract:               resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   Method: {
@@ -364,6 +487,8 @@ const resolvers = {
 
     executable:               resolveDataValueToValue,
     userExecutable:           resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
   View: {
@@ -376,6 +501,8 @@ const resolvers = {
 
     containsNoLoops:          resolveDataValueToValue,
     eventNotifier:            resolveDataValueToValue,
+
+    references:               resolveReferences,
   },
 
 };

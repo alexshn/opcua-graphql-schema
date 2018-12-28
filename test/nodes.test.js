@@ -45,7 +45,8 @@ describe("Nodes", function() {
         "VariableType",
         "DataType",
         "Method",
-        "View"
+        "View",
+        "ReferenceDescription"
       ]);
     });
   });
