@@ -14,7 +14,8 @@ describe("Nodes", function() {
       typeDefs.definitions.map(def => {
         expect(def.kind).to.be.oneOf([
           "ObjectTypeDefinition",
-          "InterfaceTypeDefinition"
+          "InterfaceTypeDefinition",
+          "InputObjectTypeDefinition"
         ]);
       });
     });
@@ -207,6 +208,12 @@ describe("Nodes", function() {
     it("should resolve View attributes", function() {
       checkAttribute(resolvers.View, "containsNoLoops");
       checkAttribute(resolvers.View, "eventNotifier");
+    });
+  });
+
+  describe("ReferenceDescription", function() {
+    it("should have targetNode resolver", function() {
+      expect(resolvers.ReferenceDescription.targetNode).to.be.a('function');
     });
   });
 });

@@ -31,11 +31,7 @@ const typeDefs = gql`
     userWriteMask: UInt32
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -56,11 +52,7 @@ const typeDefs = gql`
     eventNotifier: Byte!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -80,11 +72,7 @@ const typeDefs = gql`
     isAbstract: Boolean!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -106,11 +94,7 @@ const typeDefs = gql`
     inverseName: LocalizedText
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -137,11 +121,7 @@ const typeDefs = gql`
     historizing: Boolean!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -165,11 +145,7 @@ const typeDefs = gql`
     isAbstract: Boolean!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -189,11 +165,7 @@ const typeDefs = gql`
     isAbstract: Boolean!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -214,11 +186,7 @@ const typeDefs = gql`
     userExecutable: Boolean!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
   }
 
   """
@@ -239,11 +207,17 @@ const typeDefs = gql`
     eventNotifier: Byte!
 
     # References
-    references(
-      referenceTypeId: NodeId,
-      includeSubtypes: Boolean,
-      browseDirection: BrowseDirection,
-      targetNodeClass: [NodeClass]): [ReferenceDescription]
+    references(filter: BrowseDescription): [ReferenceDescription]
+  }
+
+  """
+  Filter for reference queries
+  """
+  input BrowseDescription {
+    referenceTypeId: NodeId
+    includeSubtypes: Boolean
+    browseDirection: BrowseDirection
+    targetNodeClass: [NodeClass]
   }
 
   """
@@ -349,13 +323,14 @@ function resolveDataValueToVariant(parent, args, context, ast) {
 
 function resolveReferences(parent, args, context, ast) {
   const { session } = context.opcua;
+  const { referenceTypeId, includeSubtypes, browseDirection, targetNodeClass } = args.filter || {};
 
   const nodesToBrowse = {
     nodeId: parent.nodeId,
-    referenceTypeId: args.referenceTypeId,
-    includeSubtypes: args.includeSubtypes != null ? args.includeSubtypes : true,
-    browseDirection: args.browseDirection != null ? BrowseDirection[args.browseDirection] : BrowseDirection.Both,
-    nodeClassMask: args.targetNodeClass != null ? args.targetNodeClass.reduce((m, c) => m | c, 0) : 0,
+    referenceTypeId: referenceTypeId,
+    includeSubtypes: includeSubtypes != null ? includeSubtypes : true,
+    browseDirection: browseDirection != null ? BrowseDirection[browseDirection] : BrowseDirection.Both,
+    nodeClassMask: targetNodeClass != null ? targetNodeClass.reduce((m, c) => m | c, 0) : 0,
     resultMask: getFieldNames(ast).map(utils.upperFirstLetter).reduce((m, f) =>
       m | ResultMask[f === "ReferenceTypeId" ? "ReferenceType" : f], 0),
   }
