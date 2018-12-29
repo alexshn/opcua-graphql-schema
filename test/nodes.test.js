@@ -68,7 +68,7 @@ describe("Nodes", function() {
   }
 
   const parent = {
-    nodeClass:                makeDataValue(DataType.Int32,         NodeClass.Object),
+    nodeClass:                makeDataValue(DataType.Int32,         NodeClass.Object.value),
     browseName:               makeDataValue(DataType.QualifiedName, coerceQualifyName("1:BrowseName")),
     displayName:              makeDataValue(DataType.LocalizedText, coerceLocalizedText("TestText")),
     description:              makeDataValue(DataType.LocalizedText, coerceLocalizedText("TestText")),

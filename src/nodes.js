@@ -333,14 +333,10 @@ function resolveReferences(parent, args, context, ast) {
     nodeClassMask: targetNodeClass != null ? targetNodeClass.reduce((m, c) => m | c, 0) : 0,
     resultMask: getFieldNames(ast).map(utils.upperFirstLetter).reduce((m, f) =>
       m | ResultMask[f === "ReferenceTypeId" ? "ReferenceType" : f], 0),
-  }
+  };
 
   return session.browse(nodesToBrowse).then(result => {
-    const {statusCode, references} = result;
-
-    if (!statusCode.equals(StatusCodes.Good)) {
-      throw new Error(`Node reference query failed with error: ${statusCode.name}`);
-    }
+    const { references } = result;
 
     if (nodesToBrowse.resultMask & ResultMask.NodeClass) {
       // Convert enum objects to int values

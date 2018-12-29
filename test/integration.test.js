@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const gql = require("graphql-tag");
 const { ApolloServer } = require('apollo-server');
 const { createTestClient } = require('apollo-server-testing');
+const { resolveNodeId, sameNodeId } = require("node-opcua-nodeid");
 const { NodeClass,
         AttributeNameById,
         coerceQualifyName,
@@ -13,16 +14,41 @@ const { makeOPCUASchema, makeOPCUAContext } = require("../index.js");
 
 const dataMock = {
   "ns=1;i=100": {
-    NodeClass: {dataType: DataType.Int32, value: NodeClass.Object},
+    NodeClass: {dataType: DataType.Int32, value: NodeClass.Object.value},
     BrowseName: {dataType: DataType.QualifiedName, value: coerceQualifyName("1:BrowseName")},
     DisplayName: {dataType: DataType.LocalizedText, value: coerceLocalizedText("TestText")},
     EventNotifier: {dataType: DataType.Byte, value: 0},
+
+    references: [
+      {
+        referenceTypeId: resolveNodeId("HasProperty"),
+        isForward: true,
+        nodeId: resolveNodeId("ns=2;s=Variable"),
+        typeDefinition: resolveNodeId("ns=2;s=Type"),
+      },
+      {
+        referenceTypeId: resolveNodeId("HasTypeDefinition"),
+        isForward: true,
+        nodeId: resolveNodeId("ns=2;s=ObjectType"),
+        typeDefinition: resolveNodeId("ns=2;s=TypeOfType"),
+      },
+    ],
   },
   "ns=2;s=Variable": {
-    NodeClass: {dataType: DataType.Int32, value: NodeClass.Variable},
+    NodeClass: {dataType: DataType.Int32, value: NodeClass.Variable.value},
     BrowseName: {dataType: DataType.QualifiedName, value: coerceQualifyName("2:Variable")},
-    DisplayName: {dataType: DataType.LocalizedText, value: coerceLocalizedText("TestText2")},
+    DisplayName: {dataType: DataType.LocalizedText, value: coerceLocalizedText("Variable")},
     Value: {dataType: DataType.Int32, value: 5050},
+
+    references: [],
+  },
+  "ns=2;s=ObjectType": {
+    NodeClass: {dataType: DataType.Int32, value: NodeClass.ObjectType.value},
+    BrowseName: {dataType: DataType.QualifiedName, value: coerceQualifyName("2:ObjectType")},
+    DisplayName: {dataType: DataType.LocalizedText, value: coerceLocalizedText("ObjectType")},
+    IsAbstract: {dataType: DataType.Boolean, value: false},
+
+    references: [],
   },
 };
 
@@ -45,13 +71,40 @@ const sessionMock = {
     });
 
     return Promise.resolve(result);
+  },
+  browse(nodesToBrowse) {
+    const nodesToBrowseArr = Array.isArray(nodesToBrowse) ? nodesToBrowse : [nodesToBrowse];
+
+    const result = nodesToBrowseArr.map(item => {
+      const nodeId = item.nodeId.toString();
+
+      if (dataMock[nodeId] && dataMock[nodeId].references) {
+        return {
+          statusCode: StatusCodes.Good,
+          references: dataMock[nodeId].references.map(ref => {
+            const targetNodeId = ref.nodeId.toString();
+            return Object.assign({}, ref, {
+              nodeClass: NodeClass.get(dataMock[targetNodeId].NodeClass.value),
+              browseName: dataMock[targetNodeId].BrowseName.value,
+              displayName: dataMock[targetNodeId].DisplayName.value,
+            });
+          })
+          // Mock supports filtering by refId and nodeClass only
+          .filter(ref => item.referenceTypeId == null || sameNodeId(item.referenceTypeId, ref.referenceTypeId))
+          .filter(ref => item.nodeClassMask == 0 || item.nodeClassMask & ref.nodeClass.value)
+        };
+      } else {
+        return { statusCode: StatusCodes.Bad, references: [] };
+      }
+    });
+
+    return Promise.resolve(Array.isArray(nodesToBrowse) ? result : result[0]);
   }
 };
 
 const QUERY_NODE = gql`
   query queryNode($nodeId: NodeId!) {
-    node(nodeId: $nodeId)
-    {
+    node(nodeId: $nodeId) {
       nodeId
       nodeClass
       browseName
@@ -66,8 +119,7 @@ const QUERY_NODE = gql`
 
 const QUERY_NODES = gql`
   query queryNodes($nodeIds: [NodeId]!) {
-    nodes(nodeIds: $nodeIds)
-    {
+    nodes(nodeIds: $nodeIds) {
       nodeId
       nodeClass
       browseName
@@ -82,6 +134,42 @@ const QUERY_NODES = gql`
   }
 `;
 
+const QUERY_REFERENCES = gql`
+  query queryRefs($nodeId: NodeId!, $filter: BrowseDescription) {
+    node(nodeId: $nodeId) {
+      nodeId
+      references(filter: $filter) {
+        referenceTypeId
+        isForward
+        nodeId
+        nodeClass
+        browseName
+        displayName
+        typeDefinition
+      }
+    }
+  }
+`;
+
+const QUERY_TARGET_NODE = gql`
+  query queryTargets($nodeId: NodeId!, $filter: BrowseDescription) {
+    node(nodeId: $nodeId) {
+      nodeId
+      references(filter: $filter) {
+        referenceTypeId
+        targetNode {
+          nodeId
+          nodeClass
+          browseName
+          displayName
+          ...on Variable {
+            value
+          }
+        }
+      }
+    }
+  }
+`;
 
 describe("Integration", function() {
 
@@ -125,7 +213,7 @@ describe("Integration", function() {
           nodeId: "ns=2;s=Variable",
           nodeClass: "Variable",
           browseName: "2:Variable",
-          displayName: "TestText2",
+          displayName: "Variable",
           value: 5050
         }])
       });
@@ -172,6 +260,93 @@ describe("Integration", function() {
       .then(res => {
         expect(res.errors).to.not.be.undefined;
         expect(res.errors).to.not.be.empty;
+      });
+    });
+  });
+
+
+  describe("References", function() {
+    let client;
+
+    before(function() {
+      client = createTestClient(new ApolloServer({
+        schema: makeOPCUASchema(),
+        context: makeOPCUAContext({session: sessionMock})
+      }));
+    });
+
+    it("should query node references with empty filter", function() {
+      return client.query({query: QUERY_REFERENCES, variables: {nodeId: "ns=1;i=100"}})
+      .then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+
+        expect(res.data.node.references).to.have.deep.members([{
+          referenceTypeId: resolveNodeId("HasProperty").toString(),
+          isForward: true,
+          nodeId: "ns=2;s=Variable",
+          nodeClass: "Variable",
+          browseName: "2:Variable",
+          displayName: "Variable",
+          typeDefinition: "ns=2;s=Type"
+        }, {
+          referenceTypeId: resolveNodeId("HasTypeDefinition").toString(),
+          isForward: true,
+          nodeId: "ns=2;s=ObjectType",
+          nodeClass: "ObjectType",
+          browseName: "2:ObjectType",
+          displayName: "ObjectType",
+          typeDefinition: "ns=2;s=TypeOfType"
+        }]);
+      });
+    });
+
+    it("should query node references with refId filter", function() {
+      return client.query({query: QUERY_REFERENCES, variables:
+        {nodeId: "ns=1;i=100", filter: {referenceTypeId: "HasProperty"}}
+      }).then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+
+        const references = res.data.node.references;
+        expect(references).to.have.lengthOf(1);
+        expect(references[0].referenceTypeId).to.equal(resolveNodeId("HasProperty").toString());
+        expect(references[0].nodeId).to.equal("ns=2;s=Variable");
+      });
+    });
+
+    it("should query node references with nodeClass filter", function() {
+      return client.query({query: QUERY_REFERENCES, variables:
+        {nodeId: "ns=1;i=100", filter: {targetNodeClass: ["ObjectType"]}}
+      }).then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+
+        const references = res.data.node.references;
+        expect(references).to.have.lengthOf(1);
+        expect(references[0].referenceTypeId).to.equal(resolveNodeId("HasTypeDefinition").toString());
+        expect(references[0].nodeId).to.equal("ns=2;s=ObjectType");
+      });
+    });
+
+    it("should query target node attributes", function() {
+      return client.query({query: QUERY_TARGET_NODE, variables:
+        {nodeId: "ns=1;i=100", filter: {referenceTypeId: "HasProperty"}}
+      }).then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+        expect(res.data.node.references).to.have.lengthOf(1);
+
+        const target = res.data.node.references[0].targetNode;
+        expect(target.nodeId).to.equal("ns=2;s=Variable");
+        expect(target.nodeClass).to.equal("Variable");
+        expect(target.browseName).to.equal("2:Variable");
+        expect(target.displayName).to.equal("Variable");
+        expect(target.value).to.equal(5050);
       });
     });
   });
