@@ -59,154 +59,35 @@ describe("Nodes", function() {
     });
   });
 
+  function makeDataValue(dataType, value) {
+    return new DataValue({
+      value: new Variant({dataType, value}),
+      statusCode: StatusCodes.Good
+    });
+  }
+
   const parent = {
-    nodeClass: new DataValue({
-      value: new Variant({
-        dataType: DataType.Int32,
-        value: NodeClass.Object
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    browseName: new DataValue({
-      value: new Variant({
-        dataType: DataType.QualifiedName,
-        value: coerceQualifyName("1:BrowseName")
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    displayName: new DataValue({
-      value: new Variant({
-        dataType: DataType.LocalizedText,
-        value: coerceLocalizedText("TestText")
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    description: new DataValue({
-      value: new Variant({
-        dataType: DataType.LocalizedText,
-        value: coerceLocalizedText("TestText")
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    writeMask: new DataValue({
-      value: new Variant({
-        dataType: DataType.UInt32,
-        value: 257
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    userWriteMask: new DataValue({
-      value: new Variant({
-        dataType: DataType.UInt32,
-        value: 258
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    eventNotifier: new DataValue({
-      value: new Variant({
-        dataType: DataType.Byte,
-        value: 12
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    isAbstract: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: true
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    symmetric: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: false
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    inverseName: new DataValue({
-      value: new Variant({
-        dataType: DataType.LocalizedText,
-        value: coerceLocalizedText("TestName")
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    value: new DataValue({
-      value: new Variant({
-        dataType: DataType.Int32,
-        value: 5050
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    dataType: new DataValue({
-      value: new Variant({
-        dataType: DataType.NodeId,
-        value: resolveNodeId("ns=1;i=1000")
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    valueRank: new DataValue({
-      value: new Variant({
-        dataType: DataType.Int32,
-        value: 1000
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    arrayDimensions: new DataValue({
-      value: new Variant({
-        dataType: DataType.UInt32,
-        value: [10, 20]
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    accessLevel: new DataValue({
-      value: new Variant({
-        dataType: DataType.Byte,
-        value: 1
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    userAccessLevel: new DataValue({
-      value: new Variant({
-        dataType: DataType.Byte,
-        value: 2
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    minimumSamplingInterval: new DataValue({
-      value: new Variant({
-        dataType: DataType.Double,
-        value: 10.1
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    historizing: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: false
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    executable: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: true
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    userExecutable: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: false
-      }),
-      statusCode: StatusCodes.Good
-    }),
-    containsNoLoops: new DataValue({
-      value: new Variant({
-        dataType: DataType.Boolean,
-        value: true
-      }),
-      statusCode: StatusCodes.Good
-    }),
+    nodeClass:                makeDataValue(DataType.Int32,         NodeClass.Object),
+    browseName:               makeDataValue(DataType.QualifiedName, coerceQualifyName("1:BrowseName")),
+    displayName:              makeDataValue(DataType.LocalizedText, coerceLocalizedText("TestText")),
+    description:              makeDataValue(DataType.LocalizedText, coerceLocalizedText("TestText")),
+    writeMask:                makeDataValue(DataType.UInt32,        257),
+    userWriteMask:            makeDataValue(DataType.UInt32,        258),
+    eventNotifier:            makeDataValue(DataType.Byte,          12),
+    isAbstract:               makeDataValue(DataType.Boolean,       true),
+    symmetric:                makeDataValue(DataType.Boolean,       false),
+    inverseName:              makeDataValue(DataType.LocalizedText, coerceLocalizedText("TestName")),
+    value:                    makeDataValue(DataType.Int32,         5050),
+    dataType:                 makeDataValue(DataType.NodeId,        resolveNodeId("ns=1;i=1000")),
+    valueRank:                makeDataValue(DataType.Int32,         1000),
+    arrayDimensions:          makeDataValue(DataType.UInt32,        [10, 20]),
+    accessLevel:              makeDataValue(DataType.Byte,          1),
+    userAccessLevel:          makeDataValue(DataType.Byte,          2),
+    minimumSamplingInterval:  makeDataValue(DataType.Double,        10.1),
+    historizing:              makeDataValue(DataType.Boolean,       false),
+    executable:               makeDataValue(DataType.Boolean,       true),
+    userExecutable:           makeDataValue(DataType.Boolean,       false),
+    containsNoLoops:          makeDataValue(DataType.Boolean,       true),
   };
 
   function checkAttribute(node, attr) {
