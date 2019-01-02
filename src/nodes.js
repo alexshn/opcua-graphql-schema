@@ -1,7 +1,9 @@
 "use strict";
 const gql = require("graphql-tag");
 const getFieldNames = require("graphql-list-fields");
+const { resolveNodeId } = require("node-opcua-nodeid");
 const { NodeClass,
+        NodeClassMask,
         BrowseDirection,
         ResultMask,
         AttributeIds } = require("node-opcua-data-model");
@@ -32,6 +34,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -53,6 +56,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -73,6 +77,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -95,6 +100,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -122,6 +128,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -146,6 +153,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -166,6 +174,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -187,6 +196,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -208,6 +218,7 @@ const typeDefs = gql`
 
     # References
     references(filter: BrowseDescription): [ReferenceDescription]
+    property(browseName: QualifiedName!): Variable
   }
 
   """
@@ -355,6 +366,31 @@ function resolveTargetNode(parent, args, context, ast) {
   });
 }
 
+function resolveProperty(parent, args, context, ast) {
+  const { session } = context.opcua;
+  const propertyName = args.browseName.toString();
+
+  return session.browse({
+    nodeId: parent.nodeId,
+    referenceTypeId: resolveNodeId("HasProperty"),
+    includeSubtypes: true,
+    browseDirection: BrowseDirection.Forward,
+    nodeClassMask: NodeClassMask.Variable,
+    resultMask: ResultMask.BrowseName,
+  })
+  .then(result => {
+    const { references } = result;
+    const ref = references.find(ref => ref.browseName.toString() === propertyName);
+
+    if (ref) {
+      return queryNodeAttributes([ref.nodeId], context, ast).then(result => {
+        return result.length > 0 ? result[0] : null;
+      });
+    }
+
+    return null;
+  });
+}
 
 const resolvers = {
   Query: {
@@ -377,6 +413,7 @@ const resolvers = {
     eventNotifier:            resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   ObjectType: {
@@ -390,6 +427,7 @@ const resolvers = {
     isAbstract:               resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   ReferenceType: {
@@ -405,6 +443,7 @@ const resolvers = {
     inverseName:              resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   Variable: {
@@ -425,6 +464,7 @@ const resolvers = {
     historizing:              resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   VariableType: {
@@ -442,6 +482,7 @@ const resolvers = {
     isAbstract:               resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   DataType: {
@@ -455,6 +496,7 @@ const resolvers = {
     isAbstract:               resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   Method: {
@@ -469,6 +511,7 @@ const resolvers = {
     userExecutable:           resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   View: {
@@ -483,6 +526,7 @@ const resolvers = {
     eventNotifier:            resolveDataValueToValue,
 
     references:               resolveReferences,
+    property:                 resolveProperty,
   },
 
   ReferenceDescription: {

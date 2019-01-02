@@ -171,6 +171,21 @@ const QUERY_TARGET_NODE = gql`
   }
 `;
 
+const QUERY_PROPERTY = gql`
+  query queryProp($nodeId: NodeId!, $propName: QualifiedName!) {
+    node(nodeId: $nodeId) {
+      nodeId
+      property(browseName: $propName) {
+        nodeId
+        nodeClass
+        browseName
+        displayName
+        value
+      }
+    }
+  }
+`;
+
 describe("Integration", function() {
 
   describe("Queries", function() {
@@ -347,6 +362,34 @@ describe("Integration", function() {
         expect(target.browseName).to.equal("2:Variable");
         expect(target.displayName).to.equal("Variable");
         expect(target.value).to.equal(5050);
+      });
+    });
+
+    it("should query property", function() {
+      return client.query({query: QUERY_PROPERTY, variables:
+        {nodeId: "ns=1;i=100", propName: "2:Variable"}
+      }).then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+
+        const property = res.data.node.property;
+        expect(property.nodeId).to.equal("ns=2;s=Variable");
+        expect(property.nodeClass).to.equal("Variable");
+        expect(property.browseName).to.equal("2:Variable");
+        expect(property.displayName).to.equal("Variable");
+        expect(property.value).to.equal(5050);
+      });
+    });
+
+    it("should return null for unknown property", function() {
+      return client.query({query: QUERY_PROPERTY, variables:
+        {nodeId: "ns=1;i=100", propName: "WrongVariable"}
+      }).then(res => {
+        expect(res.errors).to.be.undefined;
+        expect(res.data.node).to.not.be.undefined;
+        expect(res.data.node.nodeId).to.equal("ns=1;i=100");
+        expect(res.data.node.property).to.be.null;
       });
     });
   });
