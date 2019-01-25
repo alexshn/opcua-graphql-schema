@@ -1,15 +1,38 @@
 const { expect } = require("chai");
-const { OPCUAServer } = require("node-opcua-server");
-const { OPCUAClient } = require("node-opcua-client");
 const { ApolloServer } = require('apollo-server');
 const { createTestClient } = require('apollo-server-testing');
 const { makeOPCUASchema, makeOPCUAContext } = require("../index.js");
 const gql = require("graphql-tag");
+const opcua = require("node-opcua");
+const path = require("path");
 
 const QUERY_ROOT_FOLDER = gql`
   {
     node(nodeId: "RootFolder") {
       nodeId
+    }
+  }
+`;
+
+const METHOD_CALL = gql`
+  mutation callMethod($objectId: NodeId!, $methodId: NodeId!, $inputArguments: [Variant]) {
+    callMethod(methodToCall: {
+      objectId: $objectId
+      methodId: $methodId
+      inputArguments: $inputArguments
+    })
+    {
+      statusCode {
+        name
+        value
+        description
+      }
+      inputArgumentResults {
+        name
+        value
+        description
+      }
+      outputArguments
     }
   }
 `;
@@ -21,11 +44,15 @@ describe("Methods", function() {
   let client;
 
   before(function() {
-    opcServer = new OPCUAServer();
-    opcClient = new OPCUAClient();
+    const test_nodeset_file = path.join(__dirname, "testnodeset.xml");
 
-    // Set 10 seconds timeout for environment initialization
-    this.timeout(10000);
+    opcClient = new opcua.OPCUAClient();
+    opcServer = new opcua.OPCUAServer({
+      serverInfo: { applicationUri: "urn:OPCUA-GraphQL-Schema-test" },
+      nodeset_filename: [opcua.mini_nodeset_filename, test_nodeset_file]
+    });
+
+    this.timeout(10000); // 10 seconds initialization timeout
 
     // Initialize OPCUA server, OPCUA client and grathql test client
     return new Promise(resolve => opcServer.initialize(resolve)).then(() => {
@@ -63,6 +90,46 @@ describe("Methods", function() {
       return client.query({query: QUERY_ROOT_FOLDER}).then(resp => {
         expect(resp.errors).to.be.undefined;
         expect(resp.data.node.nodeId).to.equal("ns=0;i=84");
+      });
+    });
+  });
+
+  describe("Method with input and output arguments", function() {
+    before(function() {
+      const addressSpace = opcServer.engine.addressSpace;
+      const method = addressSpace.rootFolder.objects.objectWithMethods.methodInOutArgs;
+
+      method.bindMethod(function(inputArguments, context, callback) {
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: [{
+            dataType: opcua.DataType.Double,
+            value: inputArguments[0].value * inputArguments[1].value
+          }]
+        });
+      });
+    });
+
+    it("should return successful result", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5001", inputArguments: [1.5, 20]}
+      }).then(resp => {
+        expect(resp.errors).to.be.undefined;
+        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
+        expect(resp.data.callMethod.statusCode.value).to.equal(0);
+        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+
+        expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(2);
+        expect(resp.data.callMethod.inputArgumentResults[0].name).to.equal("Good");
+        expect(resp.data.callMethod.inputArgumentResults[0].value).to.equal(0);
+        expect(resp.data.callMethod.inputArgumentResults[0].description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults[1].name).to.equal("Good");
+        expect(resp.data.callMethod.inputArgumentResults[1].value).to.equal(0);
+        expect(resp.data.callMethod.inputArgumentResults[1].description).to.equal("No Error");
+
+        expect(resp.data.callMethod.outputArguments).to.have.lengthOf(1);
+        expect(resp.data.callMethod.outputArguments[0]).to.equal(30);
       });
     });
   });
