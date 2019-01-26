@@ -43,13 +43,12 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
-function callMethodsInteranl(requests, context) {
+function getInputArgumentTypes(methods, context) {
   const { session } = context.opcua;
 
-  // Request input argument types.
-  // This is required to convert input JSON to node-opcua Variant.
-  const methodsToBrowse = requests.map(request => ({
-    nodeId: request.methodId,
+  // Browse InputAgrument property of method
+  const methodsToBrowse = methods.map(method => ({
+    nodeId: method,
     referenceTypeId: "HasProperty",
     includeSubtypes: true,
     browseDirection: BrowseDirection.Forward,
@@ -57,37 +56,76 @@ function callMethodsInteranl(requests, context) {
     resultMask: ResultMask.BrowseName
   }));
 
-  return session.browse(methodsToBrowse).then(browseResult => {
-    const nodesToRead = requests.map((request, i) => {
-      const args = browseResult[i].references.find(ref =>
+  return session.browse(methodsToBrowse).then(browseResults => {
+    const nodeIds = methods.map((method, i) => {
+      const browseResult = browseResults[i];
+      const statusCode = browseResult.statusCode;
+
+      if (!statusCode.equals(StatusCodes.Good)) {
+        throw new Error(`Browse of method ${method} failed with ${statusCodes.name}: ${statusCodes.description}`);
+      }
+
+      const inputArgumentsRef = browseResult.references.find(ref =>
         ref.browseName &&
         ref.browseName.namespaceIndex === 0 &&
         ref.browseName.name === "InputArguments"
       );
 
-      if (!args) {
-        throw new Error(`Failed to get InputArguments property of the method ${request.methodId}`);
-      }
-
-      return {
-        nodeId: args.nodeId,
-        attributeId: AttributeIds.Value
-      };
+      return inputArgumentsRef ? inputArgumentsRef.nodeId : null;
     });
 
-    return session.read(nodesToRead);
-  })
-  .then(dataValues => {
-    const callRequests = requests.map((request, i) => {
-      const inputTypes = dataValues[i].value.value;
+    const nodesToRead = nodeIds.filter(nodeId => !!nodeId).map(nodeId => ({
+      nodeId: nodeId,
+      attributeId: AttributeIds.Value
+    }));
 
-      if (inputTypes.length != request.inputArguments.length) {
+    // If all methods don't have InputArguments
+    if (nodesToRead.length === 0) {
+      return nodeIds.map(ign => []);
+    }
+
+    // Read value of InputArguments properties
+    return session.read(nodesToRead).then(dataValues => {
+      const result = [];
+      let di = 0;
+
+      nodeIds.forEach(nodeId => {
+        result.push(nodeId ? dataValues[di++].value.value : []);
+      });
+
+      return result;
+    });
+  });
+}
+
+function callMethodsInteranl(requests, context) {
+  const { session } = context.opcua;
+  const methods = requests.map(request => request.methodId);
+
+  // Request input argument types.
+  // This is required to convert input JSON to node-opcua Variant.
+  return getInputArgumentTypes(methods, context).then(inputArgumetTypes => {
+    const callRequests = requests.map((request, i) => {
+      const methodInputArgumentTypes = inputArgumetTypes[i];
+
+      if (!request.inputArguments || request.inputArguments.length === 0) {
+        if (methodInputArgumentTypes.length !== 0) {
+          throw new Error(`Method ${request.methodId} requires inputArguments`);
+        }
+
+        return {
+          objectId: request.objectId,
+          methodId: request.methodId
+        };
+      }
+
+      if (methodInputArgumentTypes.length != request.inputArguments.length) {
         throw new Error(`Input arguments array of the method ${request.methodId} has a wrong length`);
       }
 
       // Map JSON input args to Variants
-      const inputArgs = request.inputArguments.map((arg, i) => {
-        const dataType = inputTypes[i].dataType;
+      const inputArgs = request.inputArguments.map((arg, j) => {
+        const dataType = methodInputArgumentTypes[j].dataType;
 
         // Only built-in types are supported
         if (dataType.namespace || dataType.value > 25) {
@@ -105,7 +143,7 @@ function callMethodsInteranl(requests, context) {
     });
 
     return session.call(callRequests);
-  })
+  });
 }
 
 function callMethod(parent, args, context, ast) {

@@ -94,6 +94,42 @@ describe("Methods", function() {
     });
   });
 
+  describe("Method without arguments", function() {
+    let methodCounter = 0;
+
+    before(function() {
+      const addressSpace = opcServer.engine.addressSpace;
+      const method = addressSpace.rootFolder.objects.objectWithMethods.methodNoArgs;
+
+      method.bindMethod(function(inputArguments, context, callback) {
+        methodCounter++;
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: []
+        });
+      });
+    });
+
+    it("should be executed successfully", function() {
+      const currentCount = methodCounter;
+
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5010", inputArguments: []}
+      }).then(resp => {
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethod).to.be.not.null;
+        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
+        expect(resp.data.callMethod.statusCode.value).to.equal(0);
+        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(0);
+        expect(resp.data.callMethod.outputArguments).to.have.lengthOf(0);
+        expect(methodCounter).to.equal(currentCount + 1);
+      });
+    });
+  });
+
+
   describe("Method with input and output arguments", function() {
     before(function() {
       const addressSpace = opcServer.engine.addressSpace;
@@ -113,9 +149,10 @@ describe("Methods", function() {
     it("should return successful result", function() {
       return client.mutate({
         mutation: METHOD_CALL,
-        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5001", inputArguments: [1.5, 20]}
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [1.5, 20]}
       }).then(resp => {
-        expect(resp.errors).to.be.undefined;
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethod).to.be.not.null;
         expect(resp.data.callMethod.statusCode.name).to.equal("Good");
         expect(resp.data.callMethod.statusCode.value).to.equal(0);
         expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
