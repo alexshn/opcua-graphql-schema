@@ -76,6 +76,7 @@ describe("Methods", function() {
     });
   });
 
+
   describe("Check environment", function() {
     it("OPCUA server should be running", function() {
       expect(opcServer.initialized).to.be.true;
@@ -93,6 +94,7 @@ describe("Methods", function() {
       });
     });
   });
+
 
   describe("Method without arguments", function() {
     let methodCounter = 0;
@@ -130,6 +132,91 @@ describe("Methods", function() {
   });
 
 
+  describe("Method with input arguments only", function() {
+    let testValue = "";
+
+    before(function() {
+      const addressSpace = opcServer.engine.addressSpace;
+      const method = addressSpace.rootFolder.objects.objectWithMethods.methodInArgs;
+
+      method.bindMethod(function(inputArguments, context, callback) {
+        testValue = inputArguments[0].value;
+
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: []
+        });
+      });
+    });
+
+    it("should be executed successfully", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: ["TestString"]}
+      }).then(resp => {
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethod).to.be.not.null;
+        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
+        expect(resp.data.callMethod.statusCode.value).to.equal(0);
+        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(1);
+        expect(resp.data.callMethod.inputArgumentResults[0].name).to.equal("Good");
+        expect(resp.data.callMethod.inputArgumentResults[0].value).to.equal(0);
+        expect(resp.data.callMethod.inputArgumentResults[0].description).to.equal("No Error");
+        expect(resp.data.callMethod.outputArguments).to.have.lengthOf(0);
+        expect(testValue).to.equal("TestString");
+      });
+    });
+  });
+
+
+  describe("Method with output arguments only", function() {
+    let resultA = 0;
+    let resultB = "";
+
+    before(function() {
+      const addressSpace = opcServer.engine.addressSpace;
+      const method = addressSpace.rootFolder.objects.objectWithMethods.methodOutArgs;
+
+      method.bindMethod(function(inputArguments, context, callback) {
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: [
+            {
+              dataType: opcua.DataType.UInt32,
+              value: resultA
+            },
+            {
+              dataType: opcua.DataType.LocalizedText,
+              value: opcua.coerceLocalizedText(resultB)
+            }
+          ]
+        });
+      });
+    });
+
+    it("should be executed successfully", function() {
+      resultA = 121;
+      resultB = "Test text";
+
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5030", inputArguments: []}
+      }).then(resp => {
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethod).to.be.not.null;
+        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
+        expect(resp.data.callMethod.statusCode.value).to.equal(0);
+        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(0);
+        expect(resp.data.callMethod.outputArguments).to.have.lengthOf(2);
+        expect(resp.data.callMethod.outputArguments[0]).to.equal(121);
+        expect(resp.data.callMethod.outputArguments[1]).to.equal("Test text");
+      });
+    });
+  });
+
+
   describe("Method with input and output arguments", function() {
     before(function() {
       const addressSpace = opcServer.engine.addressSpace;
@@ -146,7 +233,7 @@ describe("Methods", function() {
       });
     });
 
-    it("should return successful result", function() {
+    it("should be executed successfully", function() {
       return client.mutate({
         mutation: METHOD_CALL,
         variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [1.5, 20]}
