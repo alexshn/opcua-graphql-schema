@@ -58,7 +58,7 @@
             <Argument>
               <Name>InArgument</Name>
               <DataType>
-                <Identifier>i=12</Identifier>
+                <Identifier>i=21</Identifier>
               </DataType>
               <ValueRank>-1</ValueRank>
               <ArrayDimensions />
@@ -74,11 +74,25 @@
   <UAMethod NodeId="ns=1;i=5030" BrowseName="1:MethodOutArgs" ParentNodeId="ns=1;i=5000">
     <DisplayName>MethodInArgs</DisplayName>
     <References>
+      <Reference ReferenceType="HasProperty">ns=1;i=5031</Reference>
       <Reference ReferenceType="HasProperty">ns=1;i=5032</Reference>
       <Reference ReferenceType="HasModellingRule">i=78</Reference>
       <Reference ReferenceType="HasComponent" IsForward="false">ns=1;i=5000</Reference>
     </References>
   </UAMethod>
+  <UAVariable NodeId="ns=1;i=5031" BrowseName="InputArguments" ParentNodeId="ns=1;i=5030" DataType="Argument" ValueRank="1">
+    <DisplayName>InputArguments</DisplayName>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=5030</Reference>
+    </References>
+    <Value>
+      <ListOfExtensionObject xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">
+        <!-- No input arguments -->
+      </ListOfExtensionObject>
+    </Value>
+  </UAVariable>
   <UAVariable NodeId="ns=1;i=5032" BrowseName="OutputArguments" ParentNodeId="ns=1;i=5030" DataType="i=296" ValueRank="1">
     <DisplayName>OutputArguments</DisplayName>
     <References>

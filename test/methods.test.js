@@ -37,6 +37,12 @@ const METHOD_CALL = gql`
   }
 `;
 
+const GOOD_STATUS_CODE = {
+  name: "Good",
+  value: 0,
+  description: "No Error"
+};
+
 
 describe("Methods", function() {
   let opcServer;
@@ -96,6 +102,7 @@ describe("Methods", function() {
   });
 
 
+  // No InputArguments and OutputArguments properies
   describe("Method without arguments", function() {
     let methodCounter = 0;
 
@@ -121,17 +128,28 @@ describe("Methods", function() {
       }).then(resp => {
         expect(resp.errors, resp.errors).to.be.undefined;
         expect(resp.data.callMethod).to.be.not.null;
-        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
-        expect(resp.data.callMethod.statusCode.value).to.equal(0);
-        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.statusCode).to.deep.equal(GOOD_STATUS_CODE);
+
         expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(0);
         expect(resp.data.callMethod.outputArguments).to.have.lengthOf(0);
         expect(methodCounter).to.equal(currentCount + 1);
       });
     });
+
+    it("should fail if inputArguments provided", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5010", inputArguments: [10, "String"]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
+    });
   });
 
 
+  // Has only InputArguments properies
   describe("Method with input arguments only", function() {
     let testValue = "";
 
@@ -140,7 +158,7 @@ describe("Methods", function() {
       const method = addressSpace.rootFolder.objects.objectWithMethods.methodInArgs;
 
       method.bindMethod(function(inputArguments, context, callback) {
-        testValue = inputArguments[0].value;
+        testValue = inputArguments[0].value.text;
 
         callback(null, {
           statusCode: opcua.StatusCodes.Good,
@@ -156,20 +174,51 @@ describe("Methods", function() {
       }).then(resp => {
         expect(resp.errors, resp.errors).to.be.undefined;
         expect(resp.data.callMethod).to.be.not.null;
-        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
-        expect(resp.data.callMethod.statusCode.value).to.equal(0);
-        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.statusCode).to.deep.equal(GOOD_STATUS_CODE);
+
         expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(1);
-        expect(resp.data.callMethod.inputArgumentResults[0].name).to.equal("Good");
-        expect(resp.data.callMethod.inputArgumentResults[0].value).to.equal(0);
-        expect(resp.data.callMethod.inputArgumentResults[0].description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults[0]).to.deep.equal(GOOD_STATUS_CODE);
         expect(resp.data.callMethod.outputArguments).to.have.lengthOf(0);
         expect(testValue).to.equal("TestString");
+      });
+    });
+
+    it("should fail if inputArguments is not provided", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: []}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
+    });
+
+    it("should fail if wrong number of inputArguments is provided", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: ["TestString", "String2"]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
+    });
+
+    it("should fail if wrong types of inputArguments are provided", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: [1.333]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
       });
     });
   });
 
 
+  // Has InputArguments and OutputArguments properies, but InputArguments is empty
   describe("Method with output arguments only", function() {
     let resultA = 0;
     let resultB = "";
@@ -205,18 +254,28 @@ describe("Methods", function() {
       }).then(resp => {
         expect(resp.errors, resp.errors).to.be.undefined;
         expect(resp.data.callMethod).to.be.not.null;
-        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
-        expect(resp.data.callMethod.statusCode.value).to.equal(0);
-        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.statusCode).to.deep.equal(GOOD_STATUS_CODE);
         expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(0);
         expect(resp.data.callMethod.outputArguments).to.have.lengthOf(2);
         expect(resp.data.callMethod.outputArguments[0]).to.equal(121);
         expect(resp.data.callMethod.outputArguments[1]).to.equal("Test text");
       });
     });
+
+    it("should fail if inputArguments provided", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5030", inputArguments: ["Test text"]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
+    });
   });
 
 
+  // Has InputArguments and OutputArguments properies
   describe("Method with input and output arguments", function() {
     before(function() {
       const addressSpace = opcServer.engine.addressSpace;
@@ -240,20 +299,36 @@ describe("Methods", function() {
       }).then(resp => {
         expect(resp.errors, resp.errors).to.be.undefined;
         expect(resp.data.callMethod).to.be.not.null;
-        expect(resp.data.callMethod.statusCode.name).to.equal("Good");
-        expect(resp.data.callMethod.statusCode.value).to.equal(0);
-        expect(resp.data.callMethod.statusCode.description).to.equal("No Error");
+        expect(resp.data.callMethod.statusCode).to.deep.equal(GOOD_STATUS_CODE);
 
         expect(resp.data.callMethod.inputArgumentResults).to.have.lengthOf(2);
-        expect(resp.data.callMethod.inputArgumentResults[0].name).to.equal("Good");
-        expect(resp.data.callMethod.inputArgumentResults[0].value).to.equal(0);
-        expect(resp.data.callMethod.inputArgumentResults[0].description).to.equal("No Error");
-        expect(resp.data.callMethod.inputArgumentResults[1].name).to.equal("Good");
-        expect(resp.data.callMethod.inputArgumentResults[1].value).to.equal(0);
-        expect(resp.data.callMethod.inputArgumentResults[1].description).to.equal("No Error");
+        expect(resp.data.callMethod.inputArgumentResults[0]).to.deep.equal(GOOD_STATUS_CODE);
+        expect(resp.data.callMethod.inputArgumentResults[1]).to.deep.equal(GOOD_STATUS_CODE);
 
         expect(resp.data.callMethod.outputArguments).to.have.lengthOf(1);
         expect(resp.data.callMethod.outputArguments[0]).to.equal(30);
+      });
+    });
+
+    it("should fail if wrong number of inputArguments is provided", function() {
+      // TODO
+    });
+
+    it("should fail if wrong types of inputArguments are provided", function() {
+      // TODO
+    });
+  });
+
+
+  describe("Other", function() {
+    it("should fail if method doesn't exist", function() {
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5999", inputArguments: [1, 2]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
       });
     });
   });

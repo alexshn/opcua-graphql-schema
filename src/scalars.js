@@ -180,39 +180,36 @@ const DoubleType = new GraphQLScalarType({
 // at the moment of parsing we don't have type information.
 // Each method that has Variant as an input has to convert JSON to opcua.Variant
 
-function serializeVariantValue(value, dataType) {
-  switch(dataType) {
-    case DataType.Boolean:
-      return !!value;
-    case DataType.SByte:
-      return SByteType.serialize(value);
-    case DataType.Byte :
-      return ByteType.serialize(value);
-    case DataType.Int16:
-      return Int16Type.serialize(value);
-    case DataType.UInt16:
-      return UInt16Type.serialize(value);
-    case DataType.Int32:
-      return Int32Type.serialize(value);
-    case DataType.UInt32:
-      return UInt32Type.serialize(value);
-    case DataType.Float:
-      return FloatType.serialize(value);
-    case DataType.Double:
-      return DoubleType.serialize(value);
-    case DataType.String:
-      return value;
-    case DataType.NodeId:
-      return NodeIdType.serialize(value);
-    case DataType.QualifiedName:
-      return QualifiedNameType.serialize(value);
-    case DataType.LocalizedText:
-      return LocalizedTextType.serialize(value);
-    case DataType.Variant:
-      return serializeVariant(value);
+function getScalarType(dataType) {
+  switch(dataType.value) {
+    case DataType.Boolean.value:
+    case DataType.String.value:
+      return { serialize: value => value, parseValue: value => value };
+    case DataType.SByte.value:
+      return SByteType;
+    case DataType.Byte.value:
+      return ByteType;
+    case DataType.Int16.value:
+      return Int16Type;
+    case DataType.UInt16.value:
+      return UInt16Type;
+    case DataType.Int32.value:
+      return Int32Type;
+    case DataType.UInt32.value:
+      return UInt32Type;
+    case DataType.Float.value:
+      return FloatType;
+    case DataType.Double.value:
+      return DoubleType;
+    case DataType.NodeId.value:
+      return NodeIdType;
+    case DataType.QualifiedName.value:
+      return QualifiedNameType;
+    case DataType.LocalizedText.value:
+      return LocalizedTextType;
   }
 
-  throw new Error("Unknown data type of Variant value");
+  throw new Error(`Unknown value data type ${dataType}`);
 }
 
 function serializeVariant(variant) {
@@ -221,15 +218,17 @@ function serializeVariant(variant) {
   }
 
   if (variant.arrayType === VariantArrayType.Scalar) {
-    return serializeVariantValue(variant.value, variant.dataType);
+    return getScalarType(variant.dataType).serialize(variant.value);
   }
 
   // If VariantArrayType.Array or VariantArrayType.Matrix
-  let serializedArray =
-    (ArrayBuffer.isView(variant.value) ? Array.from(variant.value) : variant.value)
-    .map(value => serializeVariantValue(value, variant.dataType));
+  const serializeMethod = variant.dataType.value === DataType.Variant.value ?
+    serializeVariant : getScalarType(variant.dataType).serialize;
 
-  if (variant.arrayType === VariantArrayType.Array) {
+  let serializedArray =
+    (ArrayBuffer.isView(variant.value) ? Array.from(variant.value) : variant.value).map(serializeMethod);
+
+  if (!variant.dimensions || variant.dimensions.length <= 1) {
     return serializedArray;
   }
 
@@ -246,6 +245,12 @@ function serializeVariant(variant) {
   }
 
   return serializedArray;
+}
+
+function parseVariant(value, dataType, valueRank) {
+  // TODO: support arrays
+  const parsedValue = getScalarType(dataType).parseValue(value);
+  return new Variant({ dataType: dataType, value: parsedValue });
 }
 
 const VariantType = new GraphQLScalarType({
@@ -273,3 +278,4 @@ const resolvers = {
 };
 
 module.exports.resolvers = resolvers;
+module.exports.parseVariant = parseVariant;

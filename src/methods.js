@@ -7,6 +7,7 @@ const { NodeClassMask,
         AttributeIds } = require("node-opcua-data-model");
 const { Variant, DataType } = require("node-opcua-variant");
 const { StatusCodes } = require("node-opcua-status-code");
+const { parseVariant } = require("./scalars");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -43,7 +44,7 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
-function getInputArgumentTypes(methods, context) {
+function getInputArgumentProperties(methods, context) {
   const { session } = context.opcua;
 
   // Browse InputAgrument property of method
@@ -104,12 +105,12 @@ function callMethodsInteranl(requests, context) {
 
   // Request input argument types.
   // This is required to convert input JSON to node-opcua Variant.
-  return getInputArgumentTypes(methods, context).then(inputArgumetTypes => {
+  return getInputArgumentProperties(methods, context).then(inputArgumentProp => {
     const callRequests = requests.map((request, i) => {
-      const methodInputArgumentTypes = inputArgumetTypes[i];
+      const methodInputArgumentDefs = inputArgumentProp[i];
 
       if (!request.inputArguments || request.inputArguments.length === 0) {
-        if (methodInputArgumentTypes.length !== 0) {
+        if (methodInputArgumentDefs.length !== 0) {
           throw new Error(`Method ${request.methodId} requires inputArguments`);
         }
 
@@ -119,20 +120,21 @@ function callMethodsInteranl(requests, context) {
         };
       }
 
-      if (methodInputArgumentTypes.length != request.inputArguments.length) {
+      if (methodInputArgumentDefs.length != request.inputArguments.length) {
         throw new Error(`Input arguments array of the method ${request.methodId} has a wrong length`);
       }
 
       // Map JSON input args to Variants
       const inputArgs = request.inputArguments.map((arg, j) => {
-        const dataType = methodInputArgumentTypes[j].dataType;
+        const argDef = methodInputArgumentDefs[j];
+        const dataType = argDef.dataType;
 
         // Only built-in types are supported
         if (dataType.namespace || dataType.value > 25) {
           throw new Error(`Data type ${dataType} is not supported.`);
         }
 
-        return new Variant({ dataType: DataType[dataType.value], value: arg });
+        return parseVariant(arg, DataType[dataType.value], argDef.valueRank);
       });
 
       return {
