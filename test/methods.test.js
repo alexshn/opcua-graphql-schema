@@ -282,11 +282,13 @@ describe("Methods", function() {
       const method = addressSpace.rootFolder.objects.objectWithMethods.methodInOutArgs;
 
       method.bindMethod(function(inputArguments, context, callback) {
+        const arg0sum = inputArguments[0].value.reduce((a, b) => a + b);
+
         callback(null, {
           statusCode: opcua.StatusCodes.Good,
           outputArguments: [{
             dataType: opcua.DataType.Double,
-            value: inputArguments[0].value * inputArguments[1].value
+            value: arg0sum * inputArguments[1].value
           }]
         });
       });
@@ -295,7 +297,7 @@ describe("Methods", function() {
     it("should be executed successfully", function() {
       return client.mutate({
         mutation: METHOD_CALL,
-        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [1.5, 20]}
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [[1.5, 2.5, 6], 20]}
       }).then(resp => {
         expect(resp.errors, resp.errors).to.be.undefined;
         expect(resp.data.callMethod).to.be.not.null;
@@ -306,7 +308,7 @@ describe("Methods", function() {
         expect(resp.data.callMethod.inputArgumentResults[1]).to.deep.equal(GOOD_STATUS_CODE);
 
         expect(resp.data.callMethod.outputArguments).to.have.lengthOf(1);
-        expect(resp.data.callMethod.outputArguments[0]).to.equal(30);
+        expect(resp.data.callMethod.outputArguments[0]).to.equal(200);
       });
     });
 

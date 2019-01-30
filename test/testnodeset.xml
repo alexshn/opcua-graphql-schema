@@ -167,7 +167,7 @@
               <DataType>
                 <Identifier>i=11</Identifier>
               </DataType>
-              <ValueRank>-1</ValueRank>
+              <ValueRank>1</ValueRank>
               <ArrayDimensions />
               <Description>Argument A</Description>
             </Argument>

@@ -247,10 +247,82 @@ function serializeVariant(variant) {
   return serializedArray;
 }
 
+function calcDimensions(value) {
+  if(Array.isArray(value)) {
+    const dimensions = value.length > 0 ? calcDimensions(value[0]) : [];
+    dimensions.unshift(value.length);
+    return dimensions;
+  }
+  return [];
+}
+
 function parseVariant(value, dataType, valueRank) {
-  // TODO: support arrays
-  const parsedValue = getScalarType(dataType).parseValue(value);
-  return new Variant({ dataType: dataType, value: parsedValue });
+  const parseMethod = getScalarType(dataType).parseValue;
+  const valueDimensions = calcDimensions(value);
+
+  // Remove one dimention for scalars that has array-like semantics
+  if (valueDimensions.length > 0 && (dataType.value === DataType.UInt64.value
+    || dataType.value === DataType.Int64.value
+    || dataType.value === DataType.ByteString.value)) {
+    valueDimensions.pop();
+  }
+
+  if (valueDimensions.length === 0) {
+    if (valueRank >= 0) {
+      throw new Error("Array value is expected but scalar is provided");
+    }
+
+    return new Variant({
+      dataType: dataType,
+      arrayType: VariantArrayType.Scalar,
+      dimensions: null,
+      value: parseMethod(value)
+    });
+  } else if(valueDimensions.length === 1) {
+    if (valueRank > 1) {
+      throw new Error(`Array with ${valueRank} dimensions is expected but array with one dimention is provided`);
+    }
+    if (valueRank === -1) {
+      throw new Error("Scalar value is expected but array is provided");
+    }
+
+    return new Variant({
+      dataType: dataType,
+      arrayType: VariantArrayType.Array,
+      dimensions: null,
+      value: value.map(parseMethod)
+    });
+  } else {
+    if (valueRank > 0 && valueRank !== valueDimensions.length) {
+      throw new Error(`Array with ${valueRank} dimensions is expected but array with ${valueDimensions.length} dimensions is provided`);
+    }
+    if (valueRank === -1) {
+      throw new Error("Scalar value is expected but array is provided");
+    }
+    if (valueRank === -3) {
+      throw new Error("Scalar or array with one dimention is expected but array with multiple dimensions is provided");
+    }
+
+    // Concat arrays into single one
+    let valueArray = value;
+    for (let i = 0; i < valueDimensions.length - 1; i++) {
+      valueArray = valueArray.reduce((v1, v2) => v1.concat(v2));
+    }
+
+    const valueArrayLen = valueDimensions.reduce((l1, l2) => l1 * l2);
+    if(valueArrayLen !== valueArray.length) {
+      throw new Error("Dimention lenghts of multi-dimentional array are not consistent");
+    }
+
+    const res = new Variant({
+      dataType: dataType,
+      arrayType: VariantArrayType.Matrix,
+      dimensions: valueDimensions,
+      value: valueArray.map(parseMethod)
+    });
+
+    return res;
+  }
 }
 
 const VariantType = new GraphQLScalarType({
