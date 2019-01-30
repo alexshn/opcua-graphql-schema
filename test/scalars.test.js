@@ -6,36 +6,10 @@ const { QualifiedName,
         coerceQualifyName,
         coerceLocalizedText } = require("node-opcua-data-model");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
-const { typeDefs, resolvers } = require("../src/scalars.js");
+const { typeDefs, resolvers, parseVariant } = require("../src/scalars");
 
 
 describe("Scalars", function() {
-
-  describe("TypeDefs", function() {
-    it("should have only expected definitions", function() {
-      typeDefs.definitions.map(def => {
-        expect(def.kind).to.be.oneOf(["ScalarTypeDefinition"]);
-      });
-    });
-
-    it("should define only known scalars", function() {
-      const scalars = typeDefs.definitions.map(def => def.name.value);
-      expect(scalars).to.have.members([
-        "NodeId",
-        "QualifiedName",
-        "LocalizedText",
-        "SByte",
-        "Int16",
-        "Int32",
-        "Byte",
-        "UInt16",
-        "UInt32",
-        "Float",
-        "Double",
-        "Variant"
-      ]);
-    });
-  });
 
   describe("NodeId", function() {
     // Serialize
@@ -389,6 +363,55 @@ describe("Scalars", function() {
     it("should parse value and literal to JSON", function() {
       expect(resolvers.Variant.parseValue({a: 10, b: "text"})).to.deep.equal({a: 10, b: "text"});
       expect(resolvers.Variant.parseLiteral(parseGQLValue('{a: 10, b: "text"}'))).to.deep.equal({a: 10, b: "text"});
+    });
+
+    it("should parse JSON to scalar Variant", function() {
+      const numVariant = parseVariant(1001, DataType.UInt16, -1);
+      expect(numVariant).to.be.an.instanceof(Variant);
+      expect(numVariant.dataType).to.equal(DataType.UInt16);
+      expect(numVariant.arrayType).to.equal(VariantArrayType.Scalar);
+      expect(numVariant.dimensions).to.be.null;
+      expect(numVariant.value).to.equal(1001);
+
+      const textVariant = parseVariant("TestText!", DataType.LocalizedText, -3);
+      expect(textVariant).to.be.an.instanceof(Variant);
+      expect(textVariant.dataType).to.equal(DataType.LocalizedText);
+      expect(textVariant.arrayType).to.equal(VariantArrayType.Scalar);
+      expect(textVariant.dimensions).to.be.null;
+      expect(textVariant.value.locale).to.be.null;
+      expect(textVariant.value.text).to.equal("TestText!");
+    });
+
+    it("should parse JSON to array Variant", function() {
+      const variant1 = parseVariant([1001, 1002, 1003], DataType.UInt16, 1);
+      expect(variant1).to.be.an.instanceof(Variant);
+      expect(variant1.dataType).to.equal(DataType.UInt16);
+      expect(variant1.arrayType).to.equal(VariantArrayType.Array);
+      expect(variant1.dimensions).to.be.null;
+      expect(variant1.value).to.deep.equal(Uint16Array.from([1001, 1002, 1003]));
+
+      const variant2 = parseVariant(["str1", "str2", "str3"], DataType.String, 0);
+      expect(variant2).to.be.an.instanceof(Variant);
+      expect(variant2.dataType).to.equal(DataType.String);
+      expect(variant2.arrayType).to.equal(VariantArrayType.Array);
+      expect(variant2.dimensions).to.be.null;
+      expect(variant2.value).to.deep.equal(["str1", "str2", "str3"]);
+    });
+
+    it("should parse JSON to matrix Variant", function() {
+      const variant1 = parseVariant([[10, 11, 12], [13, 14, 15]], DataType.UInt16, 2);
+      expect(variant1).to.be.an.instanceof(Variant);
+      expect(variant1.dataType).to.equal(DataType.UInt16);
+      expect(variant1.arrayType).to.equal(VariantArrayType.Matrix);
+      expect(variant1.dimensions).to.deep.equal([2, 3]);
+      expect(variant1.value).to.deep.equal(Uint16Array.from([10, 11, 12, 13, 14, 15]));
+
+      const variant2 = parseVariant([[true, false], [false, true]], DataType.Boolean, -2);
+      expect(variant2).to.be.an.instanceof(Variant);
+      expect(variant2.dataType).to.equal(DataType.Boolean);
+      expect(variant2.arrayType).to.equal(VariantArrayType.Matrix);
+      expect(variant2.dimensions).to.deep.equal([2, 2]);
+      expect(variant2.value).to.deep.equal([true, false, false, true]);
     });
   });
 
