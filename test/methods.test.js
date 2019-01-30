@@ -37,12 +37,36 @@ const METHOD_CALL = gql`
   }
 `;
 
+const METHODS_CALL = gql`
+  mutation callMethods($methodsToCall: [CallMethodRequest]!) {
+    callMethods(methodsToCall: $methodsToCall)
+    {
+      statusCode {
+        name
+        value
+        description
+      }
+      inputArgumentResults {
+        name
+        value
+        description
+      }
+      outputArguments
+    }
+  }
+`;
+
 const GOOD_STATUS_CODE = {
   name: "Good",
   value: 0,
   description: "No Error"
 };
 
+const BAD_STATUS_CODE = {
+  name: "BadResourceUnavailable",
+  value: 0x80040000,
+  description: "An operating system resource is not available."
+};
 
 describe("Methods", function() {
   let opcServer;
@@ -313,11 +337,102 @@ describe("Methods", function() {
     });
 
     it("should fail if wrong number of inputArguments is provided", function() {
-      // TODO
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [[1.5, 2.5, 6]]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
     });
 
     it("should fail if wrong types of inputArguments are provided", function() {
-      // TODO
+      return client.mutate({
+        mutation: METHOD_CALL,
+        variables: {objectId: "ns=1;i=5000", methodId: "ns=1;i=5040", inputArguments: [1, 2]}
+      }).then(resp => {
+        expect(resp.errors).to.not.be.undefined;
+        expect(resp.errors).to.not.be.empty;
+        expect(resp.errors[0].message).to.be.a("string");
+      });
+    });
+  });
+
+  describe("Multiple methods call", function() {
+    let testValue1 = "";
+    let testValue2 = "";
+
+    before(function() {
+      const addressSpace = opcServer.engine.addressSpace;
+      const method1 = addressSpace.rootFolder.objects.objectWithMethods.methodNoArgs;
+      const method2 = addressSpace.rootFolder.objects.objectWithMethods.methodInArgs;
+
+      method1.bindMethod(function(inputArguments, context, callback) {
+        testValue1 = "Executed";
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: []
+        });
+      });
+
+      method2.bindMethod(function(inputArguments, context, callback) {
+        testValue2 = inputArguments[0].value.text;
+
+        callback(null, {
+          statusCode: opcua.StatusCodes.Good,
+          outputArguments: []
+        });
+      });
+    });
+
+    it("should execute multiple methods successfully", function() {
+      return client.mutate({
+        mutation: METHODS_CALL,
+        variables: {methodsToCall: [
+          {objectId: "ns=1;i=5000", methodId: "ns=1;i=5010"},
+          {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: ["Executed"]}
+        ]}
+      }).then(resp => {
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethods).to.be.not.null;
+        expect(resp.data.callMethods).to.have.lengthOf(2);
+        expect(resp.data.callMethods[0].statusCode).to.deep.equal(GOOD_STATUS_CODE);
+        expect(resp.data.callMethods[1].statusCode).to.deep.equal(GOOD_STATUS_CODE);
+
+        expect(testValue1).to.equal("Executed");
+        expect(testValue2).to.equal("Executed");
+      });
+    });
+
+    it("should handle if one of methods fails", function() {
+      const method = opcServer.engine.addressSpace.rootFolder.objects.objectWithMethods.methodNoArgs;
+      method.bindMethod(function(inputArguments, context, callback) {
+        callback(null, {
+          statusCode: opcua.StatusCodes.BadResourceUnavailable,
+          outputArguments: []
+        });
+      });
+
+      testValue1 = "";
+      testValue2 = "";
+
+      return client.mutate({
+        mutation: METHODS_CALL,
+        variables: {methodsToCall: [
+          {objectId: "ns=1;i=5000", methodId: "ns=1;i=5010"},
+          {objectId: "ns=1;i=5000", methodId: "ns=1;i=5020", inputArguments: ["Executed"]}
+        ]}
+      }).then(resp => {
+        expect(resp.errors, resp.errors).to.be.undefined;
+        expect(resp.data.callMethods).to.be.not.null;
+        expect(resp.data.callMethods).to.have.lengthOf(2);
+        expect(resp.data.callMethods[0].statusCode).to.deep.equal(BAD_STATUS_CODE);
+        expect(resp.data.callMethods[1].statusCode).to.deep.equal(GOOD_STATUS_CODE);
+
+        expect(testValue1).to.not.equal("Executed");
+        expect(testValue2).to.equal("Executed");
+      });
     });
   });
 
