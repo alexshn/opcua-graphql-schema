@@ -117,7 +117,7 @@ const typeDefs = gql`
     userWriteMask: UInt32
 
     # Variable attributes
-    value: Variant!
+    value: Variant
     dataType: NodeId!
     valueRank: Int32!
     arrayDimensions: [UInt32]

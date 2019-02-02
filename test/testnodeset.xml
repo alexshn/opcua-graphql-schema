@@ -14,6 +14,72 @@
     <Alias Alias="Argument">i=296</Alias>
   </Aliases>
 
+  <!-- Nodes -->
+  <UAObject NodeId="ns=1;i=2000" BrowseName="1:TestObject">
+      <DisplayName>TestObject</DisplayName>
+      <Description>TestObject description.</Description>
+      <References>
+          <Reference ReferenceType="Organizes" IsForward="false">i=85</Reference>
+          <Reference ReferenceType="HasTypeDefinition">ns=1;i=2001</Reference>
+          <Reference ReferenceType="HasProperty">ns=1;i=2003</Reference>
+      </References>
+  </UAObject>
+
+  <UAObjectType NodeId="ns=1;i=2001" BrowseName="1:TestObjectType">
+      <DisplayName>TestObjectType</DisplayName>
+      <Description>TestObjectType description.</Description>
+      <References>
+          <Reference ReferenceType="HasSubtype" IsForward="false">i=58</Reference>
+      </References>
+  </UAObjectType>
+
+  <UAReferenceType NodeId="ns=1;i=2002" BrowseName="1:TestReference" Symmetric="false">
+      <DisplayName>TestReference</DisplayName>
+      <Description>TestReference description.</Description>
+      <References>
+          <Reference ReferenceType="HasSubtype" IsForward="false">i=32</Reference>
+      </References>
+      <InverseName>InverseTestReference</InverseName>
+  </UAReferenceType>
+
+  <UAVariable NodeId="ns=1;i=2003" BrowseName="1:TestVariable" ParentNodeId="ns=1;i=2000" DataType="Double" ValueRank="-1">
+    <DisplayName>TestVariable</DisplayName>
+    <Description>TestVariable description.</Description>
+    <References>
+      <Reference ReferenceType="HasTypeDefinition">i=68</Reference>
+      <Reference ReferenceType="HasModellingRule">i=78</Reference>
+      <Reference ReferenceType="HasProperty" IsForward="false">ns=1;i=2000</Reference>
+    </References>
+    <Value>
+      <Double xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">101.01</Double>
+    </Value>
+  </UAVariable>
+
+  <UAVariableType NodeId="ns=1;i=2004" BrowseName="1:TestVariableType" DataType="String" ValueRank="-1">
+      <DisplayName>TestVariableType</DisplayName>
+      <Description>TestVariableType description.</Description>
+      <References/>
+      <Value>
+          <String xmlns="http://opcfoundation.org/UA/2008/02/Types.xsd">DefaultValue</String>
+      </Value>
+  </UAVariableType>
+
+  <UADataType NodeId="ns=1;i=2005" BrowseName="1:TestDataType" IsAbstract="true">
+      <DisplayName>TestDataType</DisplayName>
+      <Description>TestDataType description.</Description>
+      <References />
+  </UADataType>
+
+  <UAMethod NodeId="ns=1;i=2006" BrowseName="1:TestMethod">
+    <DisplayName>TestMethod</DisplayName>
+    <References />
+  </UAMethod>
+
+  <UAView NodeId="ns=1;i=2007" BrowseName="1:TestView" ContainsNoLoops="true">
+    <DisplayName>TestView</DisplayName>
+    <Description>TestView description.</Description>
+  </UAView>
+
   <!-- Object with methods -->
   <UAObject NodeId="ns=1;i=5000" BrowseName="1:ObjectWithMethods">
     <DisplayName>ObjectWithMethods</DisplayName>
