@@ -3,6 +3,7 @@ const nodes = require("./src/nodes");
 const enums = require("./src/enums");
 const scalars = require("./src/scalars");
 const methods = require("./src/methods");
+const subscriptions = require("./src/subscriptions");
 const { makeExecutableSchema } = require('graphql-tools');
 
 /**
@@ -16,13 +17,15 @@ function makeOPCUASchema(options) {
       nodes.typeDefs,
       enums.typeDefs,
       scalars.typeDefs,
-      methods.typeDefs
+      methods.typeDefs,
+      subscriptions.typeDefs
     ],
     resolvers: [
       nodes.resolvers,
       enums.resolvers,
       scalars.resolvers,
-      methods.resolvers
+      methods.resolvers,
+      subscriptions.resolvers
     ]
   });
 }
