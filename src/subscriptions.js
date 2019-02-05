@@ -1,9 +1,11 @@
 "use strict";
 const gql = require("graphql-tag");
+const getFieldNames = require("graphql-list-fields");
 const { AttributeIds } = require("node-opcua-data-model");
 const { StatusCodes } = require("node-opcua-status-code");
 const { constructEventFilter } = require("node-opcua-service-filter");
 const { NotificationDataIterator } = require('./notification-data-iterator');
+const utils = require("./utils");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -50,6 +52,10 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
+//
+// Variable subscription
+//
+
 function subscribeVariableInternal(name, session, itemsToMonitor, parameters) {
   parameters = parameters || {};
 
@@ -68,8 +74,14 @@ function subscribeVariableInternal(name, session, itemsToMonitor, parameters) {
     discardOldest: parameters.discardOldest == null ? true : parameters.discardOldest
   };
 
-  return new NotificationDataIterator(name, session, itemsToMonitor,
-    subscriptionParameters, monitorParameters);
+  return new NotificationDataIterator(session, itemsToMonitor, subscriptionParameters,
+    monitorParameters, (monitoredItem, dataValue, index) => {
+      return {[name]: {
+        nodeId: monitoredItem.itemToMonitor.nodeId,
+        value: dataValue.statusCode.equals(StatusCodes.Good) ? dataValue.value : null
+      }};
+    }
+  );
 }
 
 function subscribeVariable(parent, args, context, ast) {
@@ -94,8 +106,13 @@ function subscribeVariables(parent, args, context, ast) {
   return subscribeVariableInternal("monitorVariables", session, itemsToMonitor, args.parameters);
 }
 
+//
+// Event subscription
+//
+
 function subscribeEventInternal(name, session, itemsToMonitor, parameters, ast) {
   parameters = parameters || {};
+  const eventFields = getFieldNames(ast).filter(field => field != "nodeId");
 
   const subscriptionParameters = {
     requestedPublishingInterval: parameters.publishingInterval == null ? 1000 : parameters.publishingInterval,
@@ -110,11 +127,16 @@ function subscribeEventInternal(name, session, itemsToMonitor, parameters, ast) 
     samplingInterval: -1, // the same as publishingInterval
     queueSize: parameters.queueSize || 0,
     discardOldest: parameters.discardOldest == null ? true : parameters.discardOldest,
-    filter: constructEventFilter(["EventType", "SourceNode", "SourceName", "Message", "Severity"]),
+    filter: constructEventFilter(eventFields.map(utils.upperFirstLetter)),
   };
 
-  return new NotificationDataIterator(name, session, itemsToMonitor,
-    subscriptionParameters, monitorParameters);
+  return new NotificationDataIterator(session, itemsToMonitor, subscriptionParameters,
+    monitorParameters, (monitoredItem, dataValue, index) => {
+      const data = { nodeId: monitoredItem.itemToMonitor.nodeId };
+      dataValue.forEach((value, index) => data[eventFields[index]] = value);
+      return {[name]: data};
+    }
+  );
 }
 
 function subscribeEventSource(parent, args, context, ast) {
@@ -139,9 +161,9 @@ function subscribeEventSources(parent, args, context, ast) {
   return subscribeEventInternal("monitorEventSources", session, itemsToMonitor, args.parameters, ast);
 }
 
-function resolveDataValueToVariant(parent, args, context, ast) {
-  const data = parent.dataValue;
-  return data.statusCode.equals(StatusCodes.Good) ? data.value : null;
+function resolveVariantToValue(parent, args, context, ast) {
+  const data = parent[ast.fieldName];
+  return data != null ? data.value : null;
 }
 
 
@@ -153,16 +175,12 @@ const resolvers = {
     monitorEventSources: { subscribe: subscribeEventSources },
   },
 
-  ValueUpdate: {
-    value: resolveDataValueToVariant,
-  },
-
   Event: {
-    eventType: parent => parent.dataValue[0].value,
-    sourceNode: parent => parent.dataValue[1].value,
-    sourceName: parent => parent.dataValue[2].value,
-    message: parent => parent.dataValue[3].value,
-    severity: parent => parent.dataValue[4].value,
+    eventType:  resolveVariantToValue,
+    sourceNode: resolveVariantToValue,
+    sourceName: resolveVariantToValue,
+    message:    resolveVariantToValue,
+    severity:   resolveVariantToValue,
   },
 };
 

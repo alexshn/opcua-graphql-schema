@@ -3,12 +3,12 @@ const { $$asyncIterator } = require('iterall');
 const { ClientSubscription } = require("node-opcua-client");
 
 class NotificationDataIterator {
-  constructor(name, session, itemsToMonitor, subscriptionParameters, monitorParameters) {
-    this._name = name;
+  constructor(session, itemsToMonitor, subscriptionParameters, monitorParameters, dataHandler) {
     this._session = session;
     this._itemsToMonitor = itemsToMonitor;
     this._subscriptionParameters = subscriptionParameters;
     this._monitorParameters = monitorParameters;
+    this._dataHandler = dataHandler;
 
     this._active = true;
     this._pullQueue = [];
@@ -26,7 +26,7 @@ class NotificationDataIterator {
       );
     }).then(monitor => {
       monitor.on("changed", (monitoredItem, dataValue, index) => {
-        this._pushValue({[this._name]: {nodeId: this._itemsToMonitor[index].nodeId, dataValue}});
+        this._pushValue(this._dataHandler(monitoredItem, dataValue, index));
       });
     }).catch(err => {
       this._unsubscribe();
