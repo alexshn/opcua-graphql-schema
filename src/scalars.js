@@ -1,9 +1,16 @@
 "use strict";
 const gql = require("graphql-tag");
-const { GraphQLScalarType, Kind } = require('graphql');
-const { resolveNodeId } = require("node-opcua-nodeid");
+const { GraphQLScalarType, Kind,
+        GraphQLString,
+        GraphQLBoolean,
+        GraphQLFloat } = require('graphql');
+const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
+const { QualifiedName,
+        LocalizedText,
+        coerceQualifyName,
+        coerceLocalizedText } = require("node-opcua-data-model");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
-const { coerceQualifyName, coerceLocalizedText } = require("node-opcua-data-model");
+
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -19,7 +26,6 @@ const typeDefs = gql`
   scalar Byte
   scalar UInt16
   scalar UInt32
-  scalar Float
   scalar Double
   scalar Variant
 `;
@@ -141,22 +147,6 @@ const ByteType = defineIntType("Byte", 0, 255);
 const UInt16Type = defineIntType("UInt16", 0, 65535);
 const UInt32Type = defineIntType("UInt32", 0, 4294967295);
 
-// Float type
-function parseOPCFloat(value) {
-  if (typeof value !== "number") {
-    throw new Error("Float must be a number");
-  }
-  return value;
-}
-
-const FloatType = new GraphQLScalarType({
-  name: "Float",
-  description: "OPC UA Float type",
-  serialize: value => value,
-  parseValue: parseOPCFloat,
-  parseLiteral: (ast, vars) => parseOPCFloat(parseLiteral(ast, vars))
-});
-
 // Double type
 function parseDouble(value) {
   if (typeof value !== "number") {
@@ -180,51 +170,18 @@ const DoubleType = new GraphQLScalarType({
 // at the moment of parsing we don't have type information.
 // Each method that has Variant as an input has to convert JSON to opcua.Variant
 
-function getScalarType(dataType) {
-  switch(dataType.value) {
-    case DataType.Boolean.value:
-    case DataType.String.value:
-      return { serialize: value => value, parseValue: value => value };
-    case DataType.SByte.value:
-      return SByteType;
-    case DataType.Byte.value:
-      return ByteType;
-    case DataType.Int16.value:
-      return Int16Type;
-    case DataType.UInt16.value:
-      return UInt16Type;
-    case DataType.Int32.value:
-      return Int32Type;
-    case DataType.UInt32.value:
-      return UInt32Type;
-    case DataType.Float.value:
-      return FloatType;
-    case DataType.Double.value:
-      return DoubleType;
-    case DataType.NodeId.value:
-      return NodeIdType;
-    case DataType.QualifiedName.value:
-      return QualifiedNameType;
-    case DataType.LocalizedText.value:
-      return LocalizedTextType;
-  }
-
-  throw new Error(`Unknown value data type ${dataType}`);
-}
-
 function serializeVariant(variant) {
   if (!(variant instanceof Variant)) {
-    throw new Error("opcua.Variant value expected");
+    throw new Error("opcua.Variant value is expected");
   }
 
+  const serializeMethod = getScalarType(variant.dataType).serialize;
+
   if (variant.arrayType === VariantArrayType.Scalar) {
-    return getScalarType(variant.dataType).serialize(variant.value);
+    return serializeMethod(variant.value);
   }
 
   // If VariantArrayType.Array or VariantArrayType.Matrix
-  const serializeMethod = variant.dataType.value === DataType.Variant.value ?
-    serializeVariant : getScalarType(variant.dataType).serialize;
-
   let serializedArray =
     (ArrayBuffer.isView(variant.value) ? Array.from(variant.value) : variant.value).map(serializeMethod);
 
@@ -334,6 +291,73 @@ const VariantType = new GraphQLScalarType({
 });
 
 
+function serializeAnyValue(value) {
+  if (value instanceof NodeId) {
+    return NodeIdType.serialize(value);
+  } else if(value instanceof QualifiedName) {
+    return QualifiedNameType.serialize(value);
+  } else if(value instanceof LocalizedText) {
+    return LocalizedTextType.serialize(value);
+  } else if(Array.isArray(value)) {
+    return value.map(serializeAnyValue);
+  } else if (typeof value === 'object' && value !== null) {
+    const result = {};
+    for (var key in value) {
+      if (value.hasOwnProperty(key)) {
+        result[key] = serializeAnyValue(value[key]);
+      }
+    }
+    return result;
+  }
+
+  return value;
+}
+
+function getScalarType(dataType) {
+  switch(dataType.value) {
+    case DataType.Boolean.value:
+      return GraphQLBoolean;
+    case DataType.SByte.value:
+      return SByteType;
+    case DataType.Byte.value:
+      return ByteType;
+    case DataType.Int16.value:
+      return Int16Type;
+    case DataType.UInt16.value:
+      return UInt16Type;
+    case DataType.Int32.value:
+      return Int32Type;
+    case DataType.UInt32.value:
+      return UInt32Type;
+    // Int64
+    // UInt64
+    case DataType.Float.value:
+      return GraphQLFloat;
+    case DataType.Double.value:
+      return DoubleType;
+    case DataType.String.value:
+      return GraphQLString;
+    // DateTime
+    // Guid
+    // ByteString
+    // XmlElement
+    case DataType.NodeId.value:
+      return NodeIdType;
+    // ExpandedNodeId
+    // StatusCode
+    case DataType.QualifiedName.value:
+      return QualifiedNameType;
+    case DataType.LocalizedText.value:
+      return LocalizedTextType;
+    case DataType.Variant.value:
+      return VariantType;
+    // DiagnosticInfo
+  }
+
+  // DataType.ExtensionObject and unknown
+  return {serialize: serializeAnyValue, parseValue: value => value};
+}
+
 const resolvers = {
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
@@ -344,7 +368,6 @@ const resolvers = {
   Byte: ByteType,
   UInt16: UInt16Type,
   UInt32: UInt32Type,
-  Float: FloatType,
   Double: DoubleType,
   Variant: VariantType
 };
