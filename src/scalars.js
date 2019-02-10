@@ -25,7 +25,7 @@ const typeDefs = gql`
   scalar Int64
   scalar UInt64
   scalar Double
-  # scalar DateTime
+  scalar DateTime
   # scalar Guid
   # scalar ByteString
   # scalar XmlElement
@@ -115,7 +115,7 @@ function parseInt64(value) {
 
 const Int64Type = new GraphQLScalarType({
   name: "Int64",
-  description: "OPC UA signed 64-bit integer. Represented as an array of high and low 32-bit components.",
+  description: "OPC UA signed 64-bit integer, represented as an array of high and low 32-bit components.",
   serialize: value => value,
   parseValue: parseInt64,
   parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
@@ -123,7 +123,7 @@ const Int64Type = new GraphQLScalarType({
 
 const UInt64Type = new GraphQLScalarType({
   name: "UInt64",
-  description: "OPC UA unsigned 64-bit integer. Represented as an array of high and low 32-bit components.",
+  description: "OPC UA unsigned 64-bit integer, represented as an array of high and low 32-bit components.",
   serialize: value => value,
   parseValue: parseInt64,
   parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
@@ -145,6 +145,26 @@ const DoubleType = new GraphQLScalarType({
   parseLiteral: (ast, vars) => parseDouble(parseLiteral(ast, vars))
 });
 
+// DateTime
+function parseDateTime(value) {
+  if (typeof value === "string") {
+    var date = new Date(value);
+
+    if(!isNaN(date.getTime())) {
+      return date;
+    }
+  }
+
+  throw new Error("DateTime must be reprepresented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)");
+}
+
+const DateTimeType = new GraphQLScalarType({
+  name: "DateTime",
+  description: "OPC UA Gregorian calendar date, represented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)",
+  serialize: value => value.toJSON(),
+  parseValue: parseDateTime,
+  parseLiteral: (ast, vars) => parseDateTime(parseLiteral(ast, vars))
+});
 
 // NodeId is represented as a String with the syntax:
 // ns=<namespaceindex>;<type>=<value>
@@ -338,6 +358,8 @@ function serializeAnyValue(value) {
     return QualifiedNameType.serialize(value);
   } else if(value instanceof LocalizedText) {
     return LocalizedTextType.serialize(value);
+  } else if(value instanceof Date) {
+    return DateTimeType.serialize(value);
   } else if(Array.isArray(value)) {
     return value.map(serializeAnyValue);
   } else if (typeof value === 'object' && value !== null) {
@@ -379,7 +401,8 @@ function getScalarType(dataType) {
       return DoubleType;
     case DataType.String.value:
       return GraphQLString;
-    // DateTime
+    case DataType.DateTime.value:
+      return DateTimeType;
     // Guid
     // ByteString
     // XmlElement
@@ -410,6 +433,7 @@ const resolvers = {
   Int64: Int64Type,
   UInt64: UInt64Type,
   Double: DoubleType,
+  DateTime: DateTimeType,
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,

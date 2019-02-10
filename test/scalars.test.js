@@ -132,10 +132,25 @@ describe("Scalars", function() {
       expect(resolvers.Double.parseLiteral(parseGQLValue('0.1234'))).to.equal(0.1234);
     });
 
-    it("should throw if invalid value passed for parsing", function() {
+    it("should throw if invalid value passed for parsing Double", function() {
       const emsg = "Double must be a number";
       expect(() => resolvers.Double.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
       expect(() => resolvers.Double.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("DateTime", function() {
+    it("should serialize and parse DateTime", function() {
+      expect(resolvers.DateTime.serialize(new Date("2019-02-10T23:38:17.859Z"))).to.equal("2019-02-10T23:38:17.859Z");
+      expect(resolvers.DateTime.parseValue("1970-01-01T00:00:00.001Z")).to.deep.equal(new Date("1970-01-01T00:00:00.001Z"));
+      expect(resolvers.DateTime.parseLiteral(parseGQLValue('"2013-03-01T01:10:00Z"'))).to.deep.equal(new Date("2013-03-01T01:10:00.000Z"));
+    });
+
+    it("should throw if invalid value passed for parsing DateTime", function() {
+      const emsg = "DateTime must be reprepresented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)";
+      expect(() => resolvers.DateTime.parseValue(0)).to.throw(emsg);
+      expect(() => resolvers.DateTime.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
+      expect(() => resolvers.DateTime.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
