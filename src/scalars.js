@@ -4,29 +4,37 @@ const { GraphQLScalarType, Kind,
         GraphQLString,
         GraphQLBoolean,
         GraphQLFloat } = require('graphql');
-const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
 const { QualifiedName,
         LocalizedText,
         coerceQualifyName,
         coerceLocalizedText } = require("node-opcua-data-model");
+const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
-
 
 //------------------------------------------------------------------------------
 // Type definition
 //------------------------------------------------------------------------------
 
 const typeDefs = gql`
+  scalar SByte
+  scalar Byte
+  scalar Int16
+  scalar UInt16
+  scalar Int32
+  scalar UInt32
+  scalar Int64
+  scalar UInt64
+  scalar Double
+  # scalar DateTime
+  # scalar Guid
+  # scalar ByteString
+  # scalar XmlElement
   scalar NodeId
+  # scalar ExpandedNodeId
+  # scalar StatusCode
   scalar QualifiedName
   scalar LocalizedText
-  scalar SByte
-  scalar Int16
-  scalar Int32
-  scalar Byte
-  scalar UInt16
-  scalar UInt32
-  scalar Double
+  # scalar DiagnosticInfo
   scalar Variant
 `;
 
@@ -64,6 +72,79 @@ function parseLiteral(ast, variables) {
       return undefined;
   }
 }
+
+// Integer types
+function defineIntType(name, min, max) {
+  function parseInteger(value) {
+    if (!Number.isInteger(value) || value < min || value > max) {
+      throw new Error(`${name} must be an integer between ${min} and ${max}`);
+    }
+    return value;
+  }
+
+  return new GraphQLScalarType({
+    name,
+    description: `OPC UA ${min ? "signed" : "unsigned"} integer between ${min} and ${max}`,
+    serialize: value => value,
+    parseValue: parseInteger,
+    parseLiteral: ast => parseInteger(parseLiteral(ast))
+  });
+}
+
+const SByteType = defineIntType("SByte", -128, 127);
+const ByteType = defineIntType("Byte", 0, 255);
+const Int16Type = defineIntType("Int16", -32768, 32767);
+const UInt16Type = defineIntType("UInt16", 0, 65535);
+const Int32Type = defineIntType("Int32", -2147483648, 2147483647);
+const UInt32Type = defineIntType("UInt32", 0, 4294967295);
+
+// Int64, UInt64
+function parseInt64(value) {
+  if (!(value instanceof Array && value.length === 2)) {
+    throw new Error("Int64 and UInt64 must be an array of high and low 32-bit components.");
+  }
+
+  value.forEach(part => {
+    if(!Number.isInteger(part) || part < 0 || part > 0xffffffff) {
+      throw new Error("Int64 and UInt64 components must be 32-bit unsinged integers.");
+    }
+  });
+
+  return value;
+}
+
+const Int64Type = new GraphQLScalarType({
+  name: "Int64",
+  description: "OPC UA signed 64-bit integer. Represented as an array of high and low 32-bit components.",
+  serialize: value => value,
+  parseValue: parseInt64,
+  parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
+});
+
+const UInt64Type = new GraphQLScalarType({
+  name: "UInt64",
+  description: "OPC UA unsigned 64-bit integer. Represented as an array of high and low 32-bit components.",
+  serialize: value => value,
+  parseValue: parseInt64,
+  parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
+});
+
+// Double type
+function parseDouble(value) {
+  if (typeof value !== "number") {
+    throw new Error("Double must be a number");
+  }
+  return value;
+}
+
+const DoubleType = new GraphQLScalarType({
+  name: "Double",
+  description: "OPC UA floating-point number with double precision",
+  serialize: value => value,
+  parseValue: parseDouble,
+  parseLiteral: (ast, vars) => parseDouble(parseLiteral(ast, vars))
+});
+
 
 // NodeId is represented as a String with the syntax:
 // ns=<namespaceindex>;<type>=<value>
@@ -120,47 +201,6 @@ const LocalizedTextType = new GraphQLScalarType({
   serialize: value => value.text,
   parseValue: parseLocalizedText,
   parseLiteral: (ast, vars) => parseLocalizedText(parseLiteral(ast, vars))
-});
-
-// Integer types
-function defineIntType(name, min, max) {
-  function parseInteger(value) {
-    if (!Number.isInteger(value) || value < min || value > max) {
-      throw new Error(`${name} must be an integer between ${min} and ${max}`);
-    }
-    return value;
-  }
-
-  return new GraphQLScalarType({
-    name,
-    description: `${min ? "Signed" : "Unsigned"} integer between ${min} and ${max}`,
-    serialize: value => value,
-    parseValue: parseInteger,
-    parseLiteral: ast => parseInteger(parseLiteral(ast))
-  });
-}
-
-const SByteType = defineIntType("SByte", -128, 127);
-const Int16Type = defineIntType("Int16", -32768, 32767);
-const Int32Type = defineIntType("Int32", -2147483648, 2147483647);
-const ByteType = defineIntType("Byte", 0, 255);
-const UInt16Type = defineIntType("UInt16", 0, 65535);
-const UInt32Type = defineIntType("UInt32", 0, 4294967295);
-
-// Double type
-function parseDouble(value) {
-  if (typeof value !== "number") {
-    throw new Error("Double must be a number");
-  }
-  return value;
-}
-
-const DoubleType = new GraphQLScalarType({
-  name: "Double",
-  description: "OPC UA Double type",
-  serialize: value => value,
-  parseValue: parseDouble,
-  parseLiteral: (ast, vars) => parseDouble(parseLiteral(ast, vars))
 });
 
 
@@ -329,8 +369,10 @@ function getScalarType(dataType) {
       return Int32Type;
     case DataType.UInt32.value:
       return UInt32Type;
-    // Int64
-    // UInt64
+    case DataType.Int64.value:
+      return Int64Type;
+    case DataType.UInt64.value:
+      return UInt64Type;
     case DataType.Float.value:
       return GraphQLFloat;
     case DataType.Double.value:
@@ -359,16 +401,18 @@ function getScalarType(dataType) {
 }
 
 const resolvers = {
+  SByte: SByteType,
+  Byte: ByteType,
+  Int16: Int16Type,
+  UInt16: UInt16Type,
+  Int32: Int32Type,
+  UInt32: UInt32Type,
+  Int64: Int64Type,
+  UInt64: UInt64Type,
+  Double: DoubleType,
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
-  SByte: SByteType,
-  Int16: Int16Type,
-  Int32: Int32Type,
-  Byte: ByteType,
-  UInt16: UInt16Type,
-  UInt32: UInt32Type,
-  Double: DoubleType,
   Variant: VariantType
 };
 
