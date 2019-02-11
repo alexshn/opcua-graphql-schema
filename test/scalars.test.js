@@ -147,7 +147,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if invalid value passed for parsing DateTime", function() {
-      const emsg = "DateTime must be reprepresented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)";
+      const emsg = "DateTime must be encoded as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)";
       expect(() => resolvers.DateTime.parseValue(0)).to.throw(emsg);
       expect(() => resolvers.DateTime.parseLiteral(parseGQLValue('"text"'))).to.throw(emsg);
       expect(() => resolvers.DateTime.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
@@ -162,10 +162,24 @@ describe("Scalars", function() {
     });
 
     it("should throw if invalid value passed for parsing Guid", function() {
-      const emsg = "Guid must be reprepresented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX";
+      const emsg = "Guid must be encoded as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX";
       expect(() => resolvers.Guid.parseValue(0)).to.throw(emsg);
       expect(() => resolvers.Guid.parseLiteral(parseGQLValue('"00000000-0000-0000"'))).to.throw(emsg);
       expect(() => resolvers.Guid.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
+  describe("ByteString", function() {
+    it("should serialize and parse ByteString", function() {
+      expect(resolvers.ByteString.serialize(Buffer.from("Test text"))).to.equal("VGVzdCB0ZXh0");
+      expect(resolvers.ByteString.parseValue("UGFyc2UgdGVzdA==")).to.deep.equal(Buffer.from("Parse test"));
+      expect(resolvers.ByteString.parseLiteral(parseGQLValue('"TGl0ZXJhbCB0ZXN0"'))).to.deep.equal(Buffer.from("Literal test"));
+    });
+
+    it("should throw if invalid value passed for parsing Guid", function() {
+      const emsg = "ByteString must be encoded as a base64 string";
+      expect(() => resolvers.ByteString.parseValue(0)).to.throw(emsg);
+      expect(() => resolvers.ByteString.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
     });
   });
 
@@ -195,7 +209,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a string passed to parseValue", function() {
-      const emsg = "NodeId must be a string";
+      const emsg = "NodeId must be encoded as a string";
       expect(() => resolvers.NodeId.parseValue({})).to.throw(emsg);
       expect(() => resolvers.NodeId.parseValue(10)).to.throw(emsg);
     });
@@ -224,7 +238,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a string passed to parseLiteral", function() {
-      const emsg = "NodeId must be a string";
+      const emsg = "NodeId must be encoded as a string";
       expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("{}"))).to.throw(emsg);
       expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("10"))).to.throw(emsg);
     });
@@ -271,7 +285,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a string passed to parseValue", function() {
-      const emsg = "QualifiedName must be a string";
+      const emsg = "QualifiedName must be encodeda as a string";
       expect(() => resolvers.QualifiedName.parseValue({})).to.throw(emsg);
       expect(() => resolvers.QualifiedName.parseValue(10)).to.throw(emsg);
     });
@@ -292,7 +306,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a string passed to parseLiteral", function() {
-      const emsg = "QualifiedName must be a string";
+      const emsg = "QualifiedName must be encodeda as a string";
       expect(() => resolvers.QualifiedName.parseLiteral(parseGQLValue("{}"))).to.throw(emsg);
       expect(() => resolvers.QualifiedName.parseLiteral(parseGQLValue("10"))).to.throw(emsg);
     });
@@ -318,7 +332,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a valid value passed to parseValue", function() {
-      const emsg = "LocalizedText must be a string";
+      const emsg = "LocalizedText must be encoded as a string";
       expect(() => resolvers.LocalizedText.parseValue(10)).to.throw(emsg);
       expect(() => resolvers.LocalizedText.parseValue({locale: "EN"})).to.throw(emsg);
     });
@@ -332,7 +346,7 @@ describe("Scalars", function() {
     });
 
     it("should throw if not a valid value passed to parseLiteral", function() {
-      const emsg = "LocalizedText must be a string";
+      const emsg = "LocalizedText must be encoded as a string";
       expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('10'))).to.throw(emsg);
       expect(() => resolvers.LocalizedText.parseLiteral(parseGQLValue('{locale: "EN"}'))).to.throw(emsg);
     });

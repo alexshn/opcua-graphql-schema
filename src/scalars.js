@@ -28,7 +28,7 @@ const typeDefs = gql`
   scalar Double
   scalar DateTime
   scalar Guid
-  # scalar ByteString
+  scalar ByteString
   # scalar XmlElement
   scalar NodeId
   # scalar ExpandedNodeId
@@ -116,7 +116,7 @@ function parseInt64(value) {
 
 const Int64Type = new GraphQLScalarType({
   name: "Int64",
-  description: "OPC UA signed 64-bit integer, represented as an array of high and low 32-bit components.",
+  description: "OPC UA signed 64-bit integer encoded as an array of high and low 32-bit components.",
   serialize: value => value,
   parseValue: parseInt64,
   parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
@@ -124,7 +124,7 @@ const Int64Type = new GraphQLScalarType({
 
 const UInt64Type = new GraphQLScalarType({
   name: "UInt64",
-  description: "OPC UA unsigned 64-bit integer, represented as an array of high and low 32-bit components.",
+  description: "OPC UA unsigned 64-bit integer encoded as an array of high and low 32-bit components.",
   serialize: value => value,
   parseValue: parseInt64,
   parseLiteral: (ast, vars) => parseInt64(parseLiteral(ast, vars))
@@ -156,12 +156,12 @@ function parseDateTime(value) {
     }
   }
 
-  throw new Error("DateTime must be reprepresented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)");
+  throw new Error("DateTime must be encoded as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)");
 }
 
 const DateTimeType = new GraphQLScalarType({
   name: "DateTime",
-  description: "OPC UA Gregorian calendar date, represented as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)",
+  description: "OPC UA Gregorian calendar date encoded as a string in simplified extended ISO format (YYYY-MM-DDTHH:mm:ss.sssZ)",
   serialize: value => value.toJSON(),
   parseValue: parseDateTime,
   parseLiteral: (ast, vars) => parseDateTime(parseLiteral(ast, vars))
@@ -173,15 +173,34 @@ function parseGuid(value) {
     return value;
   }
 
-  throw new Error("Guid must be reprepresented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX");
+  throw new Error("Guid must be encoded as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX");
 }
 
 const GuidType = new GraphQLScalarType({
   name: "Guid",
-  description: "OPC UA 128-bit Globally Unique Identifier, represented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+  description: "OPC UA 128-bit Globally Unique Identifier encoded as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
   serialize: value => value,
   parseValue: parseGuid,
   parseLiteral: (ast, vars) => parseGuid(parseLiteral(ast, vars))
+});
+
+// ByteString
+function parseByteString(value) {
+  if (typeof value === "string") {
+    // Buffer.from('base64') just swallows any invalid characters
+    // See https://github.com/nodejs/node/issues/24722
+    return Buffer.from(value, "base64");
+  }
+
+  throw new Error("ByteString must be encoded as a base64 string");
+}
+
+const ByteStringType = new GraphQLScalarType({
+  name: "ByteString",
+  description: "OPC UA sequence of Byte values encoded as a base64 string",
+  serialize: value => value.toString("base64"),
+  parseValue: parseByteString,
+  parseLiteral: (ast, vars) => parseByteString(parseLiteral(ast, vars))
 });
 
 // NodeId is represented as a String with the syntax:
@@ -192,14 +211,14 @@ const GuidType = new GraphQLScalarType({
 // http://www.opcfoundation.org/UA/schemas/NodeIds.csv
 function parseNodeId(value) {
   if (typeof value !== "string") {
-    throw new Error("NodeId must be a string");
+    throw new Error("NodeId must be encoded as a string");
   }
   return resolveNodeId(value);
 }
 
 const NodeIdType = new GraphQLScalarType({
   name: "NodeId",
-  description: "OPC UA NodeId type",
+  description: "OPC UA NodeId encoded as a string",
   serialize: value => value.toString(),
   parseValue: parseNodeId,
   parseLiteral: (ast, vars) => parseNodeId(parseLiteral(ast, vars))
@@ -211,14 +230,14 @@ const NodeIdType = new GraphQLScalarType({
 // Example: "FolderType", "1:Temperature"
 function parseQualifiedName(value) {
   if (typeof value !== "string") {
-    throw new Error("QualifiedName must be a string");
+    throw new Error("QualifiedName must be encodeda as a string");
   }
   return coerceQualifyName(value);
 }
 
 const QualifiedNameType = new GraphQLScalarType({
   name: "QualifiedName",
-  description: "OPC UA QualifiedName type",
+  description: "OPC UA QualifiedName encoded as a string",
   serialize: value => value.toString(),
   parseValue: parseQualifiedName,
   parseLiteral: (ast, vars) => parseQualifiedName(parseLiteral(ast, vars))
@@ -228,14 +247,14 @@ const QualifiedNameType = new GraphQLScalarType({
 // Also the String should be provided as an input (null locale will be used).
 function parseLocalizedText(value) {
   if (typeof value !== "string") {
-    throw new Error("LocalizedText must be a string");
+    throw new Error("LocalizedText must be encoded as a string");
   }
   return coerceLocalizedText(value);
 }
 
 const LocalizedTextType = new GraphQLScalarType({
   name: "LocalizedText",
-  description: "OPC UA LocalizedText type",
+  description: "OPC UA LocalizedText encoded as a string",
   serialize: value => value.text,
   parseValue: parseLocalizedText,
   parseLiteral: (ast, vars) => parseLocalizedText(parseLiteral(ast, vars))
@@ -378,6 +397,8 @@ function serializeAnyValue(value) {
     return LocalizedTextType.serialize(value);
   } else if(value instanceof Date) {
     return DateTimeType.serialize(value);
+  } else if(Buffer.isBuffer(value)) {
+    return ByteStringType.serialize(value);
   } else if(Array.isArray(value)) {
     return value.map(serializeAnyValue);
   } else if (typeof value === 'object' && value !== null) {
@@ -423,7 +444,8 @@ function getScalarType(dataType) {
       return DateTimeType;
     case DataType.Guid.value:
       return GuidType;
-    // ByteString
+    case DataType.ByteString.value:
+      return ByteStringType;
     // XmlElement
     case DataType.NodeId.value:
       return NodeIdType;
@@ -454,6 +476,7 @@ const resolvers = {
   Double: DoubleType,
   DateTime: DateTimeType,
   Guid: GuidType,
+  ByteString: ByteStringType,
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
