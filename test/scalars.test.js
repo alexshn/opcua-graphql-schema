@@ -183,6 +183,14 @@ describe("Scalars", function() {
     });
   });
 
+  describe("XmlElement", function() {
+    it("should serialize and parse XmlElement", function() {
+      expect(resolvers.XmlElement.serialize("<a>text</a>")).to.equal("<a>text</a>");
+      expect(resolvers.XmlElement.parseValue("<a><b><b/></a>")).to.equal("<a><b><b/></a>");
+      expect(resolvers.XmlElement.parseLiteral(parseGQLValue('"just text"'))).to.equal("just text");
+    });
+  });
+
   describe("NodeId", function() {
     // Serialize
     it("should serialize NodeId to string", function() {

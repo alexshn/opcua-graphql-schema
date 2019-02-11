@@ -29,7 +29,7 @@ const typeDefs = gql`
   scalar DateTime
   scalar Guid
   scalar ByteString
-  # scalar XmlElement
+  scalar XmlElement
   scalar NodeId
   # scalar ExpandedNodeId
   # scalar StatusCode
@@ -201,6 +201,15 @@ const ByteStringType = new GraphQLScalarType({
   serialize: value => value.toString("base64"),
   parseValue: parseByteString,
   parseLiteral: (ast, vars) => parseByteString(parseLiteral(ast, vars))
+});
+
+// XmlElement
+const XmlElementType = new GraphQLScalarType({
+  name: "XmlElement",
+  description: "OPC UA XML fragment serialized as UTF-8 string",
+  serialize: GraphQLString.serialize,
+  parseValue: GraphQLString.parseValue,
+  parseLiteral: GraphQLString.parseLiteral
 });
 
 // NodeId is represented as a String with the syntax:
@@ -446,7 +455,8 @@ function getScalarType(dataType) {
       return GuidType;
     case DataType.ByteString.value:
       return ByteStringType;
-    // XmlElement
+    case DataType.XmlElement.value:
+      return XmlElementType;
     case DataType.NodeId.value:
       return NodeIdType;
     // ExpandedNodeId
@@ -477,6 +487,7 @@ const resolvers = {
   DateTime: DateTimeType,
   Guid: GuidType,
   ByteString: ByteStringType,
+  XmlElement: XmlElementType,
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
