@@ -154,6 +154,21 @@ describe("Scalars", function() {
     });
   });
 
+  describe("Guid", function() {
+    it("should serialize and parse Guid", function() {
+      expect(resolvers.Guid.serialize("72962B91-FA75-4AE6-8D28-B404DC7DAF63")).to.equal("72962B91-FA75-4AE6-8D28-B404DC7DAF63");
+      expect(resolvers.Guid.parseValue("72962B91-FA75-4AE6-8D28-B404DC7DAF63")).to.equal("72962B91-FA75-4AE6-8D28-B404DC7DAF63");
+      expect(resolvers.Guid.parseLiteral(parseGQLValue('"00000000-0000-0000-0000-000000000000"'))).to.equal("00000000-0000-0000-0000-000000000000");
+    });
+
+    it("should throw if invalid value passed for parsing Guid", function() {
+      const emsg = "Guid must be reprepresented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX";
+      expect(() => resolvers.Guid.parseValue(0)).to.throw(emsg);
+      expect(() => resolvers.Guid.parseLiteral(parseGQLValue('"00000000-0000-0000"'))).to.throw(emsg);
+      expect(() => resolvers.Guid.parseLiteral(parseGQLValue('{a: 10}'))).to.throw(emsg);
+    });
+  });
+
   describe("NodeId", function() {
     // Serialize
     it("should serialize NodeId to string", function() {

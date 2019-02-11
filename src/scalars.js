@@ -8,6 +8,7 @@ const { QualifiedName,
         LocalizedText,
         coerceQualifyName,
         coerceLocalizedText } = require("node-opcua-data-model");
+const { isValidGuid } = require("node-opcua-guid");
 const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
 
@@ -26,7 +27,7 @@ const typeDefs = gql`
   scalar UInt64
   scalar Double
   scalar DateTime
-  # scalar Guid
+  scalar Guid
   # scalar ByteString
   # scalar XmlElement
   scalar NodeId
@@ -164,6 +165,23 @@ const DateTimeType = new GraphQLScalarType({
   serialize: value => value.toJSON(),
   parseValue: parseDateTime,
   parseLiteral: (ast, vars) => parseDateTime(parseLiteral(ast, vars))
+});
+
+// Guid
+function parseGuid(value) {
+  if (typeof value === "string" && isValidGuid(value)) {
+    return value;
+  }
+
+  throw new Error("Guid must be reprepresented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX");
+}
+
+const GuidType = new GraphQLScalarType({
+  name: "Guid",
+  description: "OPC UA 128-bit Globally Unique Identifier, represented as a string in format XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX",
+  serialize: value => value,
+  parseValue: parseGuid,
+  parseLiteral: (ast, vars) => parseGuid(parseLiteral(ast, vars))
 });
 
 // NodeId is represented as a String with the syntax:
@@ -403,7 +421,8 @@ function getScalarType(dataType) {
       return GraphQLString;
     case DataType.DateTime.value:
       return DateTimeType;
-    // Guid
+    case DataType.Guid.value:
+      return GuidType;
     // ByteString
     // XmlElement
     case DataType.NodeId.value:
@@ -434,6 +453,7 @@ const resolvers = {
   UInt64: UInt64Type,
   Double: DoubleType,
   DateTime: DateTimeType,
+  Guid: GuidType,
   NodeId: NodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
