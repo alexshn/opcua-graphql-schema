@@ -22,16 +22,8 @@ const METHOD_CALL = gql`
       inputArguments: $inputArguments
     })
     {
-      statusCode {
-        name
-        value
-        description
-      }
-      inputArgumentResults {
-        name
-        value
-        description
-      }
+      statusCode
+      inputArgumentResults
       outputArguments
     }
   }
@@ -41,16 +33,8 @@ const METHODS_CALL = gql`
   mutation callMethods($methodsToCall: [CallMethodRequest]!) {
     callMethods(methodsToCall: $methodsToCall)
     {
-      statusCode {
-        name
-        value
-        description
-      }
-      inputArgumentResults {
-        name
-        value
-        description
-      }
+      statusCode
+      inputArgumentResults
       outputArguments
     }
   }

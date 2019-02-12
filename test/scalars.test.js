@@ -6,6 +6,7 @@ const { QualifiedName,
         coerceLocalizedText } = require("node-opcua-data-model");
 const { NodeId, NodeIdType } = require("node-opcua-nodeid");
 const { ExpandedNodeId } = require("node-opcua-nodeid/src/expanded_nodeid");
+const { StatusCodes } = require("node-opcua-status-code");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
 const { typeDefs, resolvers, parseVariant } = require("../src/scalars");
 
@@ -246,6 +247,14 @@ describe("Scalars", function() {
       const value = resolvers.ExpandedNodeId.parseValue("ns=1;i=123");
       expect(value).to.be.an.instanceof(ExpandedNodeId);
       expect(value).to.deep.equal(new ExpandedNodeId(NodeIdType.NUMERIC, 123, 1, null, 0));
+    });
+  });
+
+  describe("StatusCode", function() {
+    it("should serialize StatusCode to JSON", function() {
+      expect(resolvers.StatusCode.serialize(StatusCodes.Good)).to.deep.equal({
+        name:'Good', value: 0, description:'No Error'
+      });
     });
   });
 

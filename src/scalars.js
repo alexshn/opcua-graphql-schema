@@ -34,7 +34,7 @@ const typeDefs = gql`
   scalar XmlElement
   scalar NodeId
   scalar ExpandedNodeId
-  # scalar StatusCode
+  scalar StatusCode
   scalar QualifiedName
   scalar LocalizedText
   # scalar DiagnosticInfo
@@ -250,6 +250,15 @@ const ExpandedNodeIdType = new GraphQLScalarType({
   serialize: value => value.toString(),
   parseValue: parseExpandedNodeId,
   parseLiteral: (ast, vars) => parseExpandedNodeId(parseLiteral(ast, vars))
+});
+
+// StatusCode
+const StatusCodeType = new GraphQLScalarType({
+  name: "StatusCode",
+  description: "OPC UA the outcome of an operation performed by an OPC UA Server",
+  serialize: value => ({value: value.value, name: value.name, description: value.description}),
+  parseValue: () => {throw new Error("Not supported");},
+  parseLiteral: () => {throw new Error("Not supported");}
 });
 
 // QualifiedName is represented as a String with the syntax:
@@ -480,7 +489,8 @@ function getScalarType(dataType) {
       return NodeIdType;
     case DataType.ExpandedNodeId.value:
       return ExpandedNodeIdType;
-    // StatusCode
+    case DataType.StatusCode.value:
+      return StatusCodeType;
     case DataType.QualifiedName.value:
       return QualifiedNameType;
     case DataType.LocalizedText.value:
@@ -510,6 +520,7 @@ const resolvers = {
   XmlElement: XmlElementType,
   NodeId: NodeIdType,
   ExpandedNodeId: ExpandedNodeIdType,
+  StatusCode: StatusCodeType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
   Variant: VariantType

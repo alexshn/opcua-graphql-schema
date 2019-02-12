@@ -14,12 +14,6 @@ const { parseVariant } = require("./scalars");
 //------------------------------------------------------------------------------
 
 const typeDefs = gql`
-  type StatusCode {
-    name: String
-    value: UInt32
-    description: String
-  }
-
   input CallMethodRequest {
     objectId: NodeId!
     methodId: NodeId!
