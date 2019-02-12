@@ -1,10 +1,11 @@
 const { expect } = require("chai");
 const parseGQLValue = require("graphql").parseValue;
-const { NodeId, NodeIdType } = require("node-opcua-nodeid");
 const { QualifiedName,
         LocalizedText,
         coerceQualifyName,
         coerceLocalizedText } = require("node-opcua-data-model");
+const { NodeId, NodeIdType } = require("node-opcua-nodeid");
+const { ExpandedNodeId } = require("node-opcua-nodeid/src/expanded_nodeid");
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
 const { typeDefs, resolvers, parseVariant } = require("../src/scalars");
 
@@ -193,71 +194,60 @@ describe("Scalars", function() {
 
   describe("NodeId", function() {
     // Serialize
-    it("should serialize NodeId to string", function() {
+    it("should serialize NodeId to a string", function() {
       const value = resolvers.NodeId.serialize(new NodeId(NodeIdType.NUMERIC, 1234, 0));
       expect(value).to.be.a('string');
       expect(value).to.equal("ns=0;i=1234");
     });
 
     // Parse value
-    it("should parse value with NodeId as string", function() {
+    it("should parse value with NodeId as a string", function() {
       const value = resolvers.NodeId.parseValue("ns=1;i=123");
       expect(value).to.be.an.instanceof(NodeId);
-      expect(value.identifierType).to.equal(NodeIdType.NUMERIC);
-      expect(value.namespace).to.equal(1);
-      expect(value.value).to.equal(123);
+      expect(value).to.deep.equal(new NodeId(NodeIdType.NUMERIC, 123, 1));
     });
 
-    it("should parse value with NodeId as symbolic name", function() {
+    it("should parse value with NodeId as a symbolic name", function() {
       const value = resolvers.NodeId.parseValue("ObjectsFolder");
       expect(value).to.be.an.instanceof(NodeId);
-      expect(value.identifierType).to.equal(NodeIdType.NUMERIC);
-      expect(value.namespace).to.equal(0);
-      expect(value.value).to.equal(85);
-    });
-
-    it("should throw if not a string passed to parseValue", function() {
-      const emsg = "NodeId must be encoded as a string";
-      expect(() => resolvers.NodeId.parseValue({})).to.throw(emsg);
-      expect(() => resolvers.NodeId.parseValue(10)).to.throw(emsg);
-    });
-
-    it("should throw if not a valid string passed to parseValue", function() {
-      // Do not check error message since it's from node-opcua
-      expect(() => resolvers.NodeId.parseValue("invalid")).to.throw();
-      expect(() => resolvers.NodeId.parseValue("ns=0")).to.throw();
+      expect(value).to.deep.equal(new NodeId(NodeIdType.NUMERIC, 85, 0));
     });
 
     // Parse literal
-    it("should parse literal with NodeId as string", function() {
+    it("should parse literal with NodeId as a string", function() {
       const value = resolvers.NodeId.parseLiteral(parseGQLValue('"ns=1;s=TestNodeId"'));
       expect(value).to.be.an.instanceof(NodeId);
-      expect(value.identifierType).to.equal(NodeIdType.STRING);
-      expect(value.namespace).to.equal(1);
-      expect(value.value).to.equal("TestNodeId");
+      expect(value).to.deep.equal(new NodeId(NodeIdType.STRING, "TestNodeId", 1));
     });
 
-    it("should parse literal with NodeId as symbolic name", function() {
-      const value = resolvers.NodeId.parseLiteral(parseGQLValue('"ObjectsFolder"'));
-      expect(value).to.be.an.instanceof(NodeId);
-      expect(value.identifierType).to.equal(NodeIdType.NUMERIC);
-      expect(value.namespace).to.equal(0);
-      expect(value.value).to.equal(85);
-    });
-
-    it("should throw if not a string passed to parseLiteral", function() {
+    // Parse errors
+    it("should throw if invalid value is provided for parsing", function() {
       const emsg = "NodeId must be encoded as a string";
-      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("{}"))).to.throw(emsg);
+      expect(() => resolvers.NodeId.parseValue("invalid")).to.throw(/*node-opcua msg*/);
       expect(() => resolvers.NodeId.parseLiteral(parseGQLValue("10"))).to.throw(emsg);
-    });
-
-    it("should throw if not a valid string passed to parseLiteral", function() {
-      // Do not check error message since it's from node-opcua
-      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue('"invalid"'))).to.throw();
-      expect(() => resolvers.NodeId.parseLiteral(parseGQLValue('"ns=0"'))).to.throw();
-    });
+    });;
   });
 
+  describe("ExpandedNodeId", function() {
+    it("should serialize ExpandedNodeId to a string", function() {
+      const value = resolvers.ExpandedNodeId.serialize(new ExpandedNodeId(
+        NodeIdType.NUMERIC, 1234, 0, "OPCUA-GraphQL-Schema-test", 1));
+      expect(value).to.be.a('string');
+      expect(value).to.equal("ns=0;i=1234;namespaceUri:OPCUA-GraphQL-Schema-test;serverIndex:1");
+    });
+
+    it("should serialize ExpandedNodeId to a string with NodeId format", function() {
+      const value = resolvers.ExpandedNodeId.serialize(new ExpandedNodeId(NodeIdType.NUMERIC, 1234, 0, null, 0));
+      expect(value).to.be.a('string');
+      expect(value).to.equal("ns=0;i=1234");
+    });
+
+    it("should parse value with NodeId as a string", function() {
+      const value = resolvers.ExpandedNodeId.parseValue("ns=1;i=123");
+      expect(value).to.be.an.instanceof(ExpandedNodeId);
+      expect(value).to.deep.equal(new ExpandedNodeId(NodeIdType.NUMERIC, 123, 1, null, 0));
+    });
+  });
 
   describe("QualifiedName", function() {
     // serialize

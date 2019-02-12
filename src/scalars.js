@@ -10,6 +10,8 @@ const { QualifiedName,
         coerceLocalizedText } = require("node-opcua-data-model");
 const { isValidGuid } = require("node-opcua-guid");
 const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
+const { ExpandedNodeId } = require("node-opcua-nodeid/src/expanded_nodeid");
+
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
 
 //------------------------------------------------------------------------------
@@ -31,7 +33,7 @@ const typeDefs = gql`
   scalar ByteString
   scalar XmlElement
   scalar NodeId
-  # scalar ExpandedNodeId
+  scalar ExpandedNodeId
   # scalar StatusCode
   scalar QualifiedName
   scalar LocalizedText
@@ -231,6 +233,23 @@ const NodeIdType = new GraphQLScalarType({
   serialize: value => value.toString(),
   parseValue: parseNodeId,
   parseLiteral: (ast, vars) => parseNodeId(parseLiteral(ast, vars))
+});
+
+// ExpandedNodeId
+function parseExpandedNodeId(value) {
+  if (typeof value !== "string") {
+    throw new Error("ExpandedNodeId must be encoded as a string");
+  }
+  const n = resolveNodeId(value);
+  return new ExpandedNodeId(n.identifierType, n.value, n.namespace, null, 0);
+}
+
+const ExpandedNodeIdType = new GraphQLScalarType({
+  name: "ExpandedNodeId",
+  description: "OPC UA ExpandedNodeId encoded as a string",
+  serialize: value => value.toString(),
+  parseValue: parseExpandedNodeId,
+  parseLiteral: (ast, vars) => parseExpandedNodeId(parseLiteral(ast, vars))
 });
 
 // QualifiedName is represented as a String with the syntax:
@@ -459,7 +478,8 @@ function getScalarType(dataType) {
       return XmlElementType;
     case DataType.NodeId.value:
       return NodeIdType;
-    // ExpandedNodeId
+    case DataType.ExpandedNodeId.value:
+      return ExpandedNodeIdType;
     // StatusCode
     case DataType.QualifiedName.value:
       return QualifiedNameType;
@@ -489,6 +509,7 @@ const resolvers = {
   ByteString: ByteStringType,
   XmlElement: XmlElementType,
   NodeId: NodeIdType,
+  ExpandedNodeId: ExpandedNodeIdType,
   QualifiedName: QualifiedNameType,
   LocalizedText: LocalizedTextType,
   Variant: VariantType
