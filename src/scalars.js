@@ -11,8 +11,13 @@ const { QualifiedName,
 const { isValidGuid } = require("node-opcua-guid");
 const { resolveNodeId, NodeId } = require("node-opcua-nodeid");
 const { ExpandedNodeId } = require("node-opcua-nodeid/src/expanded_nodeid");
-
 const { Variant, DataType, VariantArrayType } = require("node-opcua-variant");
+const { BaseUAObject,
+        hasEnumeration,
+        getEnumeration,
+        findBuiltInType } = require("node-opcua-factory");
+const { get_base_schema } = require("node-opcua-factory/src/factories_schema_helpers");
+const { getFactory } = require("node-opcua-factory/src/factories_factories");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -37,7 +42,6 @@ const typeDefs = gql`
   scalar StatusCode
   scalar QualifiedName
   scalar LocalizedText
-  # scalar DiagnosticInfo
   scalar Variant
 `;
 
@@ -297,19 +301,119 @@ const LocalizedTextType = new GraphQLScalarType({
   parseLiteral: (ast, vars) => parseLocalizedText(parseLiteral(ast, vars))
 });
 
-
 // Variant type
 // Implementation of Variant is not symmetric.
 // Parse methods return JSON instead of opcua.Variant since
 // at the moment of parsing we don't have type information.
 // Each method that has Variant as an input has to convert JSON to opcua.Variant
+const VariantType = new GraphQLScalarType({
+  name: "Variant",
+  description: "OPC UA Variant is a union of the other built-in types",
+  serialize: serializeVariant,
+  parseValue: value => value,
+  parseLiteral: (ast, vars) => parseLiteral(ast, vars)
+});
 
-function serializeVariant(variant) {
-  if (!(variant instanceof Variant)) {
-    throw new Error("opcua.Variant value is expected");
+// Build-in types
+// Array index is a value of nodeId for namespace 0
+const _build_in_types = [
+  { id: 0,  name: "Null",             serialize: () => null,                    parse: () => null                     },
+  { id: 1,  name: "Boolean",          serialize: GraphQLBoolean.serialize,      parse: GraphQLBoolean.parseValue      },
+  { id: 2,  name: "SByte",            serialize: SByteType.serialize,           parse: SByteType.parseValue           },
+  { id: 3,  name: "Byte",             serialize: ByteType.serialize,            parse: ByteType.parseValue            },
+  { id: 4,  name: "Int16",            serialize: Int16Type.serialize,           parse: Int16Type.parseValue           },
+  { id: 5,  name: "UInt16",           serialize: UInt16Type.serialize,          parse: UInt16Type.parseValue          },
+  { id: 6,  name: "Int32",            serialize: Int32Type.serialize,           parse: Int32Type.parseValue           },
+  { id: 7,  name: "UInt32",           serialize: UInt32Type.serialize,          parse: UInt32Type.parseValue          },
+  { id: 8,  name: "Int64",            serialize: Int64Type.serialize,           parse: Int64Type.parseValue           },
+  { id: 9,  name: "UInt64",           serialize: UInt64Type.serialize,          parse: UInt64Type.parseValue          },
+  { id: 10, name: "Float",            serialize: GraphQLFloat.serialize,        parse: GraphQLFloat.parseValue        },
+  { id: 11, name: "Double",           serialize: DoubleType.serialize,          parse: DoubleType.parseValue          },
+  { id: 12, name: "String",           serialize: GraphQLString.serialize,       parse: GraphQLString.parseValue       },
+  { id: 13, name: "DateTime",         serialize: DateTimeType.serialize,        parse: DateTimeType.parseValue        },
+  { id: 14, name: "Guid",             serialize: GuidType.serialize,            parse: GuidType.parseValue            },
+  { id: 15, name: "ByteString",       serialize: ByteStringType.serialize,      parse: ByteStringType.parseValue      },
+  { id: 16, name: "XmlElement",       serialize: XmlElementType.serialize,      parse: XmlElementType.parseValue      },
+  { id: 17, name: "NodeId",           serialize: NodeIdType.serialize,          parse: NodeIdType.parseValue          },
+  { id: 18, name: "ExpandedNodeId",   serialize: ExpandedNodeIdType.serialize,  parse: ExpandedNodeIdType.parseValue  },
+  { id: 19, name: "StatusCode",       serialize: StatusCodeType.serialize,      parse: StatusCodeType.parseValue      },
+  { id: 20, name: "QualifiedName",    serialize: QualifiedNameType.serialize,   parse: QualifiedNameType.parseValue   },
+  { id: 21, name: "LocalizedText",    serialize: LocalizedTextType.serialize,   parse: LocalizedTextType.parseValue   },
+  { id: 22, name: "ExtensionObject",  serialize: serializeExtObject,            parse: value => value                 },
+  { id: 23, name: "DataValue",        serialize: serializeExtObject,            parse: value => value                 },
+  { id: 24, name: "Variant",          serialize: VariantType.serialize,         parse: VariantType.parseValue         },
+  { id: 25, name: "DiagnosticInfo",   serialize: serializeExtObject,            parse: value => value                 },
+];
+
+// Node OPCUA uses type names in the schemas
+// Create map with name as a key to find corresponding serialize/parse methods
+const _build_in_types_by_name = {};
+_build_in_types.forEach(type => {_build_in_types_by_name[type.name] = type;});
+
+
+function visitAllSchemaFields(schema, callback) {
+  schema.fields.forEach(field => callback(field));
+
+  const baseSchema = get_base_schema(schema);
+  if (baseSchema) {
+    visitAllSchemaFields(baseSchema, callback);
+  }
+}
+
+function serializeFieldValue(object, field, serialize) {
+  const fieldValue = object[field.name];
+
+  if (fieldValue) {
+    if (field.isArray) {
+      return fieldValue.map(serialize);
+    } else {
+      return serialize(fieldValue);
+    }
   }
 
-  const serializeMethod = getScalarType(variant.dataType).serialize;
+  return null;
+}
+
+// Serialize ExtensionObject based on node-opcua object schema
+// We expect that schema has 'fields' property:
+//  fields {
+//    name
+//    fieldType
+//    isArray (optional)
+//  }
+function serializeExtObject(object) {
+  // TODO: assert(instanceof BaseUAObject)
+  // TODO: assert(value has _schema)
+
+  const result = {};
+  visitAllSchemaFields(object._schema, field => {
+    const fieldType = field.fieldType;
+
+    if (_build_in_types_by_name[fieldType]) {
+      // Serialize build-in type
+      const serializeMethod = _build_in_types_by_name[fieldType].serialize;
+      result[field.name] = serializeFieldValue(object, field, serializeMethod);
+    } else if (hasEnumeration(fieldType)) {
+      // Enum item serialized to number
+      result[field.name] = serializeFieldValue(object, field, e => e.value);
+    } else if (getFactory(fieldType)) {
+      // Serialize embedded ExtensionObject
+      result[field.name] = serializeFieldValue(object, field, serializeExtObject);
+    } else {
+      // Basic types serialized as build-in types
+      const serializeMethod = _build_in_types_by_name[findBuiltInType(fieldType).name].serialize;
+      result[field.name] = serializeFieldValue(object, field, serializeMethod);
+    }
+  });
+
+  return result;
+}
+
+// Serialize variant based on its data type
+// Multi-dimensional arrays are encoded as array of arrays
+function serializeVariant(variant) {
+  // TODO: assert(instanceof Variant)
+  const serializeMethod = _build_in_types[variant.dataType.value].serialize;
 
   if (variant.arrayType === VariantArrayType.Scalar) {
     return serializeMethod(variant.value);
@@ -338,6 +442,7 @@ function serializeVariant(variant) {
   return serializedArray;
 }
 
+
 function calcDimensions(value) {
   if(Array.isArray(value)) {
     const dimensions = value.length > 0 ? calcDimensions(value[0]) : [];
@@ -348,13 +453,12 @@ function calcDimensions(value) {
 }
 
 function parseVariant(value, dataType, valueRank) {
-  const parseMethod = getScalarType(dataType).parseValue;
+  const parseMethod = _build_in_types[dataType.value].parse;
   const valueDimensions = calcDimensions(value);
 
   // Remove one dimention for scalars that has array-like semantics
   if (valueDimensions.length > 0 && (dataType.value === DataType.UInt64.value
-    || dataType.value === DataType.Int64.value
-    || dataType.value === DataType.ByteString.value)) {
+    || dataType.value === DataType.Int64.value)) {
     valueDimensions.pop();
   }
 
@@ -416,93 +520,6 @@ function parseVariant(value, dataType, valueRank) {
   }
 }
 
-const VariantType = new GraphQLScalarType({
-  name: "Variant",
-  description: "OPC UA Variant is a union of the other built-in types",
-  serialize: serializeVariant,
-  parseValue: value => value,
-  parseLiteral: (ast, vars) => parseLiteral(ast, vars)
-});
-
-
-function serializeAnyValue(value) {
-  if (value instanceof NodeId) {
-    return NodeIdType.serialize(value);
-  } else if(value instanceof QualifiedName) {
-    return QualifiedNameType.serialize(value);
-  } else if(value instanceof LocalizedText) {
-    return LocalizedTextType.serialize(value);
-  } else if(value instanceof Date) {
-    return DateTimeType.serialize(value);
-  } else if(Buffer.isBuffer(value)) {
-    return ByteStringType.serialize(value);
-  } else if(Array.isArray(value)) {
-    return value.map(serializeAnyValue);
-  } else if (typeof value === 'object' && value !== null) {
-    const result = {};
-    for (var key in value) {
-      if (value.hasOwnProperty(key)) {
-        result[key] = serializeAnyValue(value[key]);
-      }
-    }
-    return result;
-  }
-
-  return value;
-}
-
-function getScalarType(dataType) {
-  switch(dataType.value) {
-    case DataType.Boolean.value:
-      return GraphQLBoolean;
-    case DataType.SByte.value:
-      return SByteType;
-    case DataType.Byte.value:
-      return ByteType;
-    case DataType.Int16.value:
-      return Int16Type;
-    case DataType.UInt16.value:
-      return UInt16Type;
-    case DataType.Int32.value:
-      return Int32Type;
-    case DataType.UInt32.value:
-      return UInt32Type;
-    case DataType.Int64.value:
-      return Int64Type;
-    case DataType.UInt64.value:
-      return UInt64Type;
-    case DataType.Float.value:
-      return GraphQLFloat;
-    case DataType.Double.value:
-      return DoubleType;
-    case DataType.String.value:
-      return GraphQLString;
-    case DataType.DateTime.value:
-      return DateTimeType;
-    case DataType.Guid.value:
-      return GuidType;
-    case DataType.ByteString.value:
-      return ByteStringType;
-    case DataType.XmlElement.value:
-      return XmlElementType;
-    case DataType.NodeId.value:
-      return NodeIdType;
-    case DataType.ExpandedNodeId.value:
-      return ExpandedNodeIdType;
-    case DataType.StatusCode.value:
-      return StatusCodeType;
-    case DataType.QualifiedName.value:
-      return QualifiedNameType;
-    case DataType.LocalizedText.value:
-      return LocalizedTextType;
-    case DataType.Variant.value:
-      return VariantType;
-    // DiagnosticInfo
-  }
-
-  // DataType.ExtensionObject and unknown
-  return {serialize: serializeAnyValue, parseValue: value => value};
-}
 
 const resolvers = {
   SByte: SByteType,
