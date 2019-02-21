@@ -1,13 +1,9 @@
 "use strict";
 const gql = require("graphql-tag");
 const { resolveNodeId } = require("node-opcua-nodeid");
-const { NodeClassMask,
-        BrowseDirection,
-        ResultMask,
-        AttributeIds } = require("node-opcua-data-model");
 const { Variant, DataType } = require("node-opcua-variant");
-const { StatusCodes } = require("node-opcua-status-code");
 const { parseVariant } = require("./scalars");
+const { DataTypeCache } = require("./data-type-cache");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -38,68 +34,13 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
-function getInputArgumentProperties(methods, context) {
-  const { session } = context.opcua;
-
-  // Browse InputAgrument property of method
-  const methodsToBrowse = methods.map(method => ({
-    nodeId: method,
-    referenceTypeId: "HasProperty",
-    includeSubtypes: true,
-    browseDirection: BrowseDirection.Forward,
-    nodeClassMask: NodeClassMask.Variable,
-    resultMask: ResultMask.BrowseName
-  }));
-
-  return session.browse(methodsToBrowse).then(browseResults => {
-    const nodeIds = methods.map((method, i) => {
-      const browseResult = browseResults[i];
-      const statusCode = browseResult.statusCode;
-
-      if (!statusCode.equals(StatusCodes.Good)) {
-        throw new Error(`Browse of method ${method} failed with ${statusCodes.name}: ${statusCodes.description}`);
-      }
-
-      const inputArgumentsRef = browseResult.references.find(ref =>
-        ref.browseName &&
-        ref.browseName.namespaceIndex === 0 &&
-        ref.browseName.name === "InputArguments"
-      );
-
-      return inputArgumentsRef ? inputArgumentsRef.nodeId : null;
-    });
-
-    const nodesToRead = nodeIds.filter(nodeId => !!nodeId).map(nodeId => ({
-      nodeId: nodeId,
-      attributeId: AttributeIds.Value
-    }));
-
-    // If all methods don't have InputArguments
-    if (nodesToRead.length === 0) {
-      return nodeIds.map(ign => []);
-    }
-
-    // Read value of InputArguments properties
-    return session.read(nodesToRead).then(dataValues => {
-      const result = [];
-      let di = 0;
-
-      nodeIds.forEach(nodeId => {
-        result.push(nodeId ? dataValues[di++].value.value : []);
-      });
-
-      return result;
-    });
-  });
-}
-
 function callMethodsInteranl(requests, context) {
   const { session } = context.opcua;
   const methods = requests.map(request => request.methodId);
 
   // Request input argument types.
   // This is required to convert input JSON to node-opcua Variant.
-  return getInputArgumentProperties(methods, context).then(inputArgumentProp => {
+  return DataTypeCache.getInputArgumentsInfo(context, methods).then(inputArgumentProp => {
     const callRequests = requests.map((request, i) => {
       const methodInputArgumentDefs = inputArgumentProp[i];
 

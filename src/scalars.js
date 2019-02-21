@@ -383,7 +383,7 @@ function serializeFieldValue(object, field, serialize) {
 //  }
 function serializeExtObject(object) {
   // TODO: assert(instanceof BaseUAObject)
-  // TODO: assert(value has _schema)
+  // TODO: assert(object has _schema)
 
   const result = {};
   visitAllSchemaFields(object._schema, field => {

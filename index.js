@@ -4,6 +4,7 @@ const enums = require("./src/enums");
 const scalars = require("./src/scalars");
 const methods = require("./src/methods");
 const subscriptions = require("./src/subscriptions");
+const { DataTypeCache } = require("./src/data-type-cache");
 const { makeExecutableSchema } = require('graphql-tools');
 
 /**
@@ -39,7 +40,8 @@ function makeOPCUASchema(options) {
 function makeOPCUAContext(options) {
   return {
     opcua: {
-      session: options.session
+      session: options.session,
+      dataTypeCache: new DataTypeCache(),
     }
   }
 }
