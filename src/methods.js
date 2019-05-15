@@ -1,9 +1,13 @@
 "use strict";
 const gql = require("graphql-tag");
 const { resolveNodeId } = require("node-opcua-nodeid");
+const { NodeClassMask,
+        BrowseDirection,
+        ResultMask,
+        AttributeIds } = require("node-opcua-data-model");
+const { StatusCodes } = require("node-opcua-status-code");
 const { Variant, DataType } = require("node-opcua-variant");
 const { parseVariant } = require("./scalars");
-const { DataTypeCache } = require("./data-type-cache");
 
 //------------------------------------------------------------------------------
 // Type definition
@@ -34,13 +38,93 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
+function requestInputArguments(context, methodIds) {
+  const { session } = context.opcua;
+
+  if (methodIds.length === 0) {
+    return Promise.resolve([]);
+  }
+
+  // Browse InputAgrument property of method
+  const methodsToBrowse = methodIds.map(methodId => ({
+    nodeId: methodId,
+    referenceTypeId: "HasProperty",
+    includeSubtypes: true,
+    browseDirection: BrowseDirection.Forward,
+    nodeClassMask: NodeClassMask.Variable,
+    resultMask: ResultMask.BrowseName
+  }));
+
+  return session.browse(methodsToBrowse).then(browseResults => {
+    const nodeIds = methodIds.map((method, i) => {
+      const browseResult = browseResults[i];
+      const statusCode = browseResult.statusCode;
+
+      if (!statusCode.equals(StatusCodes.Good)) {
+        throw new Error(`Browse of method ${method} failed with ${statusCodes.name}: ${statusCodes.description}`);
+      }
+
+      const inputArgumentsRef = browseResult.references.find(ref =>
+        ref.browseName &&
+        ref.browseName.namespaceIndex === 0 &&
+        ref.browseName.name === "InputArguments"
+      );
+
+      return inputArgumentsRef ? inputArgumentsRef.nodeId : null;
+    });
+
+    const nodesToRead = nodeIds.filter(nodeId => !!nodeId).map(nodeId => ({
+      nodeId: nodeId,
+      attributeId: AttributeIds.Value
+    }));
+
+    // If all methods don't have InputArguments
+    if (nodesToRead.length === 0) {
+      return nodeIds.map(ign => []);
+    }
+
+    // Read value of InputArguments properties
+    return session.read(nodesToRead).then(dataValues => {
+      const result = [];
+      let di = 0;
+
+      nodeIds.forEach(nodeId => {
+        result.push(nodeId ? dataValues[di++].value.value : []);
+      });
+
+      return result;
+    });
+  });
+}
+
+function getCachedInputArguments(context, methodIds) {
+  const { typeCache } = context.opcua;
+
+  if (!typeCache) {
+    return requestInputArguments(context, methodIds);
+  }
+
+  // TODO: optimize it...
+  const nonCachedIds = methodIds.filter(methodId => !typeCache.get(methodId.toString()));
+
+  return requestInputArguments(context, nonCachedIds).then(nonCachedResult => {
+    // Put values to cache
+    nonCachedIds.forEach((methodId, i) => {
+      typeCache.set(methodId.toString(), nonCachedResult[i]);
+    });
+
+    // Get full result from cache
+    return methodIds.map(methodId => typeCache.get(methodId.toString()));
+  });
+}
+
 function callMethodsInteranl(requests, context) {
   const { session } = context.opcua;
   const methods = requests.map(request => request.methodId);
 
   // Request input argument types.
   // This is required to convert input JSON to node-opcua Variant.
-  return DataTypeCache.getInputArgumentsInfo(context, methods).then(inputArgumentProp => {
+  return getCachedInputArguments(context, methods).then(inputArgumentProp => {
     const callRequests = requests.map((request, i) => {
       const methodInputArgumentDefs = inputArgumentProp[i];
 

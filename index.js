@@ -4,7 +4,6 @@ const enums = require("./src/enums");
 const scalars = require("./src/scalars");
 const methods = require("./src/methods");
 const subscriptions = require("./src/subscriptions");
-const { DataTypeCache } = require("./src/data-type-cache");
 const { makeExecutableSchema } = require('graphql-tools');
 
 /**
@@ -36,12 +35,16 @@ function makeOPCUASchema(options) {
  * @method makeOPCUAContext
  * @param options {Object} an object of options
  * @param options.session {ClientSession} node-opcua session object
+ * @param options.typeCache {Map} Map-like cache for OPC UA type info
+ * Cache examples:
+ * https://www.npmjs.com/package/node-cache
+ * https://www.npmjs.com/package/caching-map
  */
 function makeOPCUAContext(options) {
   return {
     opcua: {
       session: options.session,
-      dataTypeCache: new DataTypeCache(),
+      typeCache: options.typeCache,
     }
   }
 }
