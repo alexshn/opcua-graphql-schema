@@ -38,6 +38,8 @@ module.exports.typeDefs = typeDefs;
 // Resolvers
 //------------------------------------------------------------------------------
 
+// Request InputArguments variables for given methods
+// InputArguments is a property (variable) of Method class
 function requestInputArguments(context, methodIds) {
   const { session } = context.opcua;
 
@@ -97,6 +99,8 @@ function requestInputArguments(context, methodIds) {
   });
 }
 
+// Get cached InputArguments property of methods
+// If the value is not cached request it from server
 function getCachedInputArguments(context, methodIds) {
   const { typeCache } = context.opcua;
 
@@ -104,21 +108,39 @@ function getCachedInputArguments(context, methodIds) {
     return requestInputArguments(context, methodIds);
   }
 
-  // TODO: optimize it...
-  const nonCachedIds = methodIds.filter(methodId => !typeCache.get(methodId.toString()));
+  // Get data from cache and list of non-cached items
+  const result = new Array(methodIds.length);
+  const nonCached = [];
+  const nonCachedIdx = [];
 
-  return requestInputArguments(context, nonCachedIds).then(nonCachedResult => {
-    // Put values to cache
-    nonCachedIds.forEach((methodId, i) => {
-      typeCache.set(methodId.toString(), nonCachedResult[i]);
+  methodIds.forEach((methodId, i) => {
+    const cached = typeCache.get(methodId.toString());
+    if (cached) {
+      result[i] = cached;
+    } else {
+      nonCached.push(methodId);
+      nonCachedIdx.push(i);
+    }
+  });
+
+  // All data hits the cache
+  if (nonCached.length === 0) {
+    return Promise.resolve(result);
+  }
+
+  // Request non-cached data from server
+  return requestInputArguments(context, nonCached).then(nonCachedResult => {
+    nonCachedResult.forEach((ncRes, i) => {
+      result[nonCachedIdx[i]] = ncRes;
+      typeCache.set(nonCached[i].toString(), ncRes);
     });
 
-    // Get full result from cache
-    return methodIds.map(methodId => typeCache.get(methodId.toString()));
+    return result;
   });
 }
 
-function callMethodsInteranl(requests, context) {
+// Internal implementation of method call
+function callMethodsInternal(requests, context) {
   const { session } = context.opcua;
   const methods = requests.map(request => request.methodId);
 
@@ -168,11 +190,11 @@ function callMethodsInteranl(requests, context) {
 }
 
 function callMethod(parent, args, context, ast) {
-  return callMethodsInteranl([args.methodToCall], context).then(results => results[0]);
+  return callMethodsInternal([args.methodToCall], context).then(results => results[0]);
 }
 
 function callMethods(parent, args, context, ast) {
-  return callMethodsInteranl(args.methodsToCall, context);
+  return callMethodsInternal(args.methodsToCall, context);
 }
 
 const resolvers = {
